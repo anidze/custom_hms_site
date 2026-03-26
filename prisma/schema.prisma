@@ -1,0 +1,43 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlserver"
+  url      = env("DATABASE_URL")
+}
+
+// სასტუმრო — HMS ემსახურება რამდენიმე სასტუმროს
+model Hotel {
+  id        Int      @id @default(autoincrement())
+  name      String   @db.NVarChar(200)       // სასტუმროს სახელი
+  address   String?  @db.NVarChar(500)       // მისამართი
+  phone     String?  @db.NVarChar(50)        // ტელეფონი
+  logoUrl   String?  @db.NVarChar(500)       // ლოგოს URL
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // კავშირები — ერთ სასტუმროს ბევრი მომხმარებელი ჰყავს
+  users User[]
+}
+
+// მომხმარებელი — ყოველი მიბმულია კონკრეტულ სასტუმროზე
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique @db.NVarChar(255)  // უნიკალური ელ-ფოსტა
+  password  String   @db.NVarChar(255)           // bcrypt hash
+  name      String   @db.NVarChar(200)           // სახელი
+  role      String   @default("RECEPTIONIST") @db.NVarChar(50) // ADMIN, MANAGER, RECEPTIONIST
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // კავშირი სასტუმროსთან — ყოველი მომხმარებელი ერთ სასტუმროს ეკუთვნის
+  hotelId Int
+  hotel   Hotel @relation(fields: [hotelId], references: [id])
+}
