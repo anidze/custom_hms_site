@@ -32,6 +32,7 @@ interface SidebarProps {
 
 export default function Sidebar({ hotelName = "HMS" }: SidebarProps) {
   const [isOpen, setIsOpen] = useState(true); // Desktop: always open; mobile: toggle
+  const iconColorClass = "text-[#d56f4d]";
 
   return (
     <>
@@ -39,7 +40,7 @@ export default function Sidebar({ hotelName = "HMS" }: SidebarProps) {
       <aside
         className={`${
           isOpen ? "w-64" : "w-20"
-        } bg-[#e2977980] text-black font-bold transition-all duration-300 fixed h-full flex flex-col border-r border-slate-700`}
+        } bg-[#ffe5de] text-black font-bold transition-all duration-300 fixed h-full flex flex-col border-r border-slate-700`}
       >
         {/* Header — open: logo, closed: burger icon */}
         <div className="p-4 border-b border-slate-700 flex items-center justify-between">
@@ -58,7 +59,11 @@ export default function Sidebar({ hotelName = "HMS" }: SidebarProps) {
             className="p-2 hover:border rounded transition-colors flex items-center justify-center"
             title={isOpen ? "Collapse" : "Expand"}
           >
-            {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            {isOpen ? (
+              <X className={`w-5 h-5 ${iconColorClass}`} />
+            ) : (
+              <Menu className={`w-5 h-5 ${iconColorClass}`} />
+            )}
           </button>
         </div>
 
@@ -72,10 +77,10 @@ export default function Sidebar({ hotelName = "HMS" }: SidebarProps) {
                 key={item.label}
                 href={item.href}
                 // className="flex items-center gap-4 px-4 py-3 rounded-lg hover:bg-slate-700 transition-colors duration-200"
-                className="flex items-center gap-4 px-4 py-3 rounded-lg border-2 border-transparent hover:border-slate-700"
+                className="flex items-center gap-4 px-4 py-3 rounded-lg border-2 border-transparent hover:border-[#d56f4d] transition-colors duration-200"
                 title={!isOpen ? item.label : undefined}
               >
-                <Icon className="w-8 h-5" />
+                <Icon className={`w-4 h-4 ${iconColorClass}`} />
                 {isOpen && <span>{item.label}</span>}
               </Link>
             );
@@ -83,9 +88,9 @@ export default function Sidebar({ hotelName = "HMS" }: SidebarProps) {
         </nav>
 
         {/* Footer */}
-        <div className="p-4 border-t border-slate-700">
+        <div className="p-4 border-t border-[#d56f4d]">
           <button className="w-full px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 transition-colors text-sm font-medium flex items-center justify-center gap-2">
-            <LogOut className="w-4 h-4" />
+            <LogOut className={`w-4 h-4 ${iconColorClass}`} />
             {isOpen && <span>Logout</span>}
           </button>
         </div>
