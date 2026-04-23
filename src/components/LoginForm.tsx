@@ -3,6 +3,8 @@
 
 import { useState, type FormEvent } from "react";
 import Image from "next/image";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 interface LoginFormProps {
   hotelName?: string;
@@ -13,6 +15,7 @@ export default function LoginForm({
   hotelName = "Eldream",
   logoSrc = "/Eldream tower at sunset1.png",
 }: LoginFormProps) {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -23,11 +26,27 @@ export default function LoginForm({
     setError("");
     setIsLoading(true);
 
-    console.log("შესვლის მცდელობა:", { email });
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
 
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setError("ავთენტიფიკაცია ჯერ არ არის დაყენებული");
-    setIsLoading(false);
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error ?? "შესვლა ვერ მოხერხდა");
+        setIsLoading(false);
+        return;
+      }
+
+      router.push("/dashboard");
+      router.refresh();
+    } catch {
+      setError("სერვერთან კავშირი ვერ მოხერხდა");
+      setIsLoading(false);
+    }
   }
 
   return (
@@ -70,7 +89,7 @@ export default function LoginForm({
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="name@hotel.com"
-            className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-800 placeholder-slate-400 transition-colors focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-500/20"
+            className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-800 placeholder-slate-400 transition-colors focus:border-[#d56f4d] focus:outline-none focus:ring-2 focus:ring-[#d56f4d]/20"
           />
         </div>
 
@@ -88,22 +107,30 @@ export default function LoginForm({
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="••••••••"
-            className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-800 placeholder-slate-400 transition-colors focus:border-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-500/20"
+            className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-800 placeholder-slate-400 transition-colors focus:border-[#d56f4d] focus:outline-none focus:ring-2 focus:ring-[#d56f4d]/20"
           />
         </div>
 
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full rounded-lg bg-slate-800 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-500/30 disabled:cursor-not-allowed disabled:opacity-60"
+          className="w-full rounded-lg bg-[#d56f4d] py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#c4623f] focus:outline-none focus:ring-2 focus:ring-[#d56f4d]/30 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {isLoading ? "შესვლა..." : "შესვლა"}
+          {isLoading ? "შემოწმება..." : "შესვლა"}
         </button>
       </form>
 
-      <p className="mt-6 text-center text-xs text-slate-400">
-        © 2026 {hotelName} — Hotel Management System
+      <p className="mt-6 text-center text-sm text-slate-500">
+        არ გაქვს ანგარიში?{" "}
+        <Link href="/register" className="font-semibold text-[#d56f4d] hover:underline">
+          რეგისტრაცია
+        </Link>
+      </p>
+
+      <p className="mt-4 text-center text-xs text-slate-400">
+        © 2026 — Hotel Management System
       </p>
     </div>
   );
 }
+
