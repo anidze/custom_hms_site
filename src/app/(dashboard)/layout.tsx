@@ -1,7 +1,8 @@
-// Dashboard layout — sidebar + content
+// Dashboard layout — sidebar + header + content
 import { cookies } from "next/headers";
 import { verifySession } from "@/lib/session";
 import Sidebar from "@/components/navbar/Sidebar";
+import TopHeader from "@/components/navbar/TopHeader";
 
 export default async function DashboardLayout({
   children,
@@ -15,7 +16,10 @@ export default async function DashboardLayout({
   return (
     <div className="flex min-h-screen bg-slate-50">
       <Sidebar hotelName={session?.hotelName} userFullName={session?.fullName} />
-      <main className="flex-1 p-8 ml-64">{children}</main>
+      <div className="flex-1 ml-64 flex flex-col min-h-screen">
+        <TopHeader userFullName={session?.fullName} role="Admin" />
+        <main className="flex-1 p-8">{children}</main>
+      </div>
     </div>
   );
 }
