@@ -1,16 +1,16 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { Calendar, ChevronDown, UserCircle } from "lucide-react";
+import { Calendar } from "lucide-react";
 
 const PAGE_TITLES: Record<string, string> = {
-  "/dashboard": "DASHBOARD",
-  "/frontdesk": "FRONTDESK",
-  "/reservations": "RESERVATION",
-  "/rooms": "ROOMS",
-  "/housekeeping": "HOUSEKEEPING",
-  "/invoice": "INVOICE",
-  "/reports": "REPORTS",
+  "/dashboard":    "Dashboard",
+  "/frontdesk":    "Frontdesk",
+  "/reservations": "Reservations",
+  "/rooms":        "Rooms",
+  "/housekeeping": "Housekeeping",
+  "/invoice":      "Invoice",
+  "/reports":      "Reports",
 };
 
 interface TopHeaderProps {
@@ -18,41 +18,48 @@ interface TopHeaderProps {
   role?: string;
 }
 
-export default function TopHeader({ userFullName = "Admin User", role = "Admin" }: TopHeaderProps) {
+export default function TopHeader({ userFullName = "Admin", role = "Admin" }: TopHeaderProps) {
   const pathname = usePathname();
   const title = PAGE_TITLES[pathname] ?? "HMS";
 
   const today = new Date();
-  const formatted = today.toLocaleDateString("en-GB", {
+  const displayDate = today.toLocaleDateString("en-GB", {
     day: "2-digit",
     month: "short",
     year: "numeric",
-    weekday: "long",
+    weekday: "short",
   });
-  // "Wednesday, 23 Apr 2026" → reformat to "23 Apr 2026, Wednesday"
-  const parts = formatted.split(", ");
-  const displayDate = parts.length === 2 ? `${parts[1]}, ${parts[0]}` : formatted;
+
+  const initials = userFullName
+    .split(" ")
+    .map((n) => n[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
 
   return (
-    <header className="h-14 bg-white border-b border-slate-100 flex items-center justify-between px-6 shrink-0">
-      {/* Date */}
-      <div className="flex items-center gap-2 text-sm text-slate-600">
-        <Calendar size={15} className="text-slate-400" />
+    <header className="h-14 bg-white border-b border-zinc-100 flex items-center justify-between px-6 shrink-0">
+      {/* Left: title */}
+      <h1 className="text-sm font-semibold text-zinc-900 tracking-tight">{title}</h1>
+
+      {/* Center: date */}
+      <div className="flex items-center gap-1.5 text-xs text-zinc-400">
+        <Calendar size={13} />
         <span>{displayDate}</span>
       </div>
 
-      {/* Page title */}
-      <h1 className="text-base font-bold text-slate-800 tracking-widest">{title}</h1>
-
-      {/* User */}
-      <div className="flex items-center gap-2 cursor-pointer select-none">
-        <UserCircle size={32} className="text-slate-400" />
-        <div className="flex flex-col leading-tight">
-          <span className="text-sm font-semibold text-slate-800">{userFullName}</span>
-          <span className="text-xs text-slate-400">{role}</span>
+      {/* Right: user */}
+      <div className="flex items-center gap-2.5">
+        <div className="text-right hidden sm:block">
+          <p className="text-xs font-medium text-zinc-800 leading-tight">{userFullName}</p>
+          <p className="text-[11px] text-zinc-400 leading-tight">{role}</p>
         </div>
-        <ChevronDown size={14} className="text-slate-400" />
+        <div className="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center text-white text-xs font-semibold shrink-0">
+          {initials}
+        </div>
       </div>
     </header>
   );
 }
+
+

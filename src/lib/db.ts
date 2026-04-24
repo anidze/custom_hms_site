@@ -1,13 +1,35 @@
-import { PrismaClient } from "@prisma/client";
+import sql from 'mssql';
 
-// globalThis-ზე ვინახავთ Prisma-ს ინსტანსს
-// რომ dev mode-ში hot reload-ით ახალი კავშირები არ შეიქმნას
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined;
+const config = {
+    connectionString: process.env.DATABASE_URL,
+    options: {
+        enableArithAbort: true,
+        trustServerCertificate: true // ლოკალური დეველოპმენტისთვის
+    },
+    pool: {
+        max: 10,
+        min: 0,
+        idleTimeoutMillis: 30000
+    }
 };
 
-export const prisma = globalForPrisma.prisma ?? new PrismaClient();
+// გლობალური ცვლადი, რომ კავშირი არ გაორმაგდეს
+let poolPromise: Promise<sql.ConnectionPool> | null = null;
 
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma;
-}
+export const getDB = () => {
+    if (poolPromise) return poolPromise;
+    
+    poolPromise = new sql.ConnectionPool(config as any)
+        .connect()
+        .then(pool => {
+            console.log('✅ SQL Server-თან კავშირი დამყარდა');
+            return pool;
+        })
+        .catch(err => {
+            poolPromise = null;
+            console.error('❌ SQL Server-ის კავშირის შეცდომა:', err);
+            throw err;
+        });
+
+    return poolPromise;
+};

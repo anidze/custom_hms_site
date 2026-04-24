@@ -34,9 +34,9 @@ const mockReservations: Reservation[] = Array.from({ length: 9 }, (_, i) => ({
 }));
 
 const ROOM_STATUS_COLORS: Record<string, string> = {
-  Clean: "text-green-600",
-  Dirty: "text-red-500",
-  Inspected: "text-blue-500",
+  Clean: "text-emerald-600",
+  Dirty: "text-rose-500",
+  Inspected: "text-sky-500",
 };
 
 export default function ReservationsPage() {
@@ -64,20 +64,20 @@ export default function ReservationsPage() {
       <div className="flex gap-2">
         <button
           onClick={() => setTab("checkin")}
-          className={`px-6 py-2 rounded-lg font-semibold text-sm transition-colors ${
+          className={`px-5 py-2 rounded-lg text-sm font-medium transition-colors ${
             tab === "checkin"
-              ? "bg-[#d56f4d] text-white"
-              : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
+              ? "bg-orange-500 text-white"
+              : "bg-white text-zinc-600 border border-zinc-200 hover:bg-zinc-50"
           }`}
         >
           Check-In
         </button>
         <button
           onClick={() => setTab("checkout")}
-          className={`px-6 py-2 rounded-lg font-semibold text-sm transition-colors ${
+          className={`px-5 py-2 rounded-lg text-sm font-medium transition-colors ${
             tab === "checkout"
-              ? "bg-[#d56f4d] text-white"
-              : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
+              ? "bg-orange-500 text-white"
+              : "bg-white text-zinc-600 border border-zinc-200 hover:bg-zinc-50"
           }`}
         >
           Check-Out
@@ -88,34 +88,34 @@ export default function ReservationsPage() {
       <div className="flex items-center justify-between gap-3">
         <div className="flex gap-2">
           {/* Guest filter */}
-          <button className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">
+          <button className="flex items-center gap-2 bg-white border border-zinc-200 rounded-lg px-3.5 py-2 text-xs text-zinc-600 hover:bg-zinc-50 transition-colors">
             {guestFilter}
-            <ChevronDown size={14} />
+            <ChevronDown size={13} />
           </button>
           {/* Date filter */}
-          <button className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">
+          <button className="flex items-center gap-2 bg-white border border-zinc-200 rounded-lg px-3.5 py-2 text-xs text-zinc-600 hover:bg-zinc-50 transition-colors">
             {dateFilter}
-            <ChevronDown size={14} />
+            <ChevronDown size={13} />
           </button>
         </div>
 
         {/* Search */}
-        <div className="flex items-center gap-2 border border-slate-200 rounded-lg px-3 py-2 bg-white w-72">
+        <div className="flex items-center gap-2 border border-zinc-200 rounded-lg px-3 py-2 bg-white w-72">
           <input
             type="text"
             placeholder="Search by using booking name or no"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="flex-1 outline-none text-sm text-slate-600 bg-transparent"
+            className="flex-1 outline-none text-xs text-zinc-600 bg-transparent placeholder-zinc-400"
           />
-          <Search size={14} className="text-[#d56f4d]" />
+          <Search size={13} className="text-orange-400" />
         </div>
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-zinc-100 overflow-hidden">
         {/* Header */}
-        <div className="grid grid-cols-[40px_1fr_1fr_1fr_80px_1fr_1fr_1fr_1fr_80px] text-xs font-semibold text-slate-500 uppercase tracking-wide border-b border-slate-100 px-4 py-3">
+        <div className="grid grid-cols-[40px_1fr_1fr_1fr_80px_1fr_1fr_1fr_1fr_80px] text-[11px] font-semibold text-zinc-400 uppercase tracking-wider border-b border-zinc-100 px-4 py-3">
           <div />
           <div>Guest Name</div>
           <div>Booking No</div>
@@ -132,47 +132,44 @@ export default function ReservationsPage() {
         {filtered.map((r, idx) => (
           <div
             key={r.id}
-            className={`grid grid-cols-[40px_1fr_1fr_1fr_80px_1fr_1fr_1fr_1fr_80px] items-center px-4 py-3 border-b border-slate-50 text-sm transition-colors ${
-              r.selected ? "bg-[#fff4f1]" : idx % 2 === 0 ? "bg-white" : "bg-slate-50/50"
-            } hover:bg-[#fff4f1]`}
+            className={`grid grid-cols-[40px_1fr_1fr_1fr_80px_1fr_1fr_1fr_1fr_80px] items-center px-4 py-3 border-b border-zinc-50 text-sm transition-colors ${
+              r.selected ? "bg-orange-50" : idx % 2 === 0 ? "bg-white" : "bg-zinc-50/50"
+            } hover:bg-orange-50/50`}
           >
             {/* Checkbox */}
             <div className="flex items-center">
               {r.selected ? (
-                <span className="w-4 h-4 rounded-full bg-[#d56f4d] block" />
+                <span className="w-3.5 h-3.5 rounded-full bg-orange-500 block" />
               ) : (
-                <input
-                  type="checkbox"
-                  className="w-4 h-4 accent-[#d56f4d] cursor-pointer"
-                  onChange={() => toggleSelect(r.id)}
-                />
+                <input type="checkbox" className="w-4 h-4 accent-orange-500 cursor-pointer"
+                  onChange={() => toggleSelect(r.id)} />
               )}
             </div>
 
-            <div className="font-medium text-slate-700">{r.guestName}</div>
-            <div className="text-slate-500">{r.bookingNo}</div>
-            <div className="text-slate-500">{r.bookingSource}</div>
-            <div className="text-slate-700 font-semibold">{r.roomNo}</div>
-            <div className="text-slate-500">{r.roomType}</div>
+            <div className="font-medium text-zinc-800">{r.guestName}</div>
+            <div className="text-zinc-400 text-xs">{r.bookingNo}</div>
+            <div className="text-zinc-400 text-xs">{r.bookingSource}</div>
+            <div className="text-zinc-700 font-semibold text-xs">{r.roomNo}</div>
+            <div className="text-zinc-400 text-xs">{r.roomType}</div>
             <div className={`font-medium ${ROOM_STATUS_COLORS[r.roomStatus]}`}>{r.roomStatus}</div>
             <div className="text-slate-700 font-semibold">{r.totalAmount}</div>
 
             {/* Amount Status */}
             <div className="text-sm">
               {r.amountStatus === "Paid" ? (
-                <span className="text-slate-700 font-medium">Paid</span>
+                <span className="inline-flex items-center rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">Paid</span>
               ) : (
                 <div className="flex flex-col leading-tight">
-                  <span className="text-slate-500">Due</span>
-                  <span className="text-red-500 font-semibold">{r.dueAmount}</span>
+                  <span className="text-[11px] text-zinc-400">Due</span>
+                  <span className="text-xs text-rose-500 font-semibold">{r.dueAmount}</span>
                 </div>
               )}
             </div>
 
             {/* Edit */}
             <div>
-              <button className="flex items-center gap-1 border border-slate-200 rounded-lg px-2 py-1 text-xs text-slate-600 hover:bg-slate-100 transition-colors">
-                <Pencil size={12} />
+              <button className="flex items-center gap-1 border border-zinc-200 rounded-md px-2 py-1 text-xs text-zinc-500 hover:bg-zinc-100 transition-colors">
+                <Pencil size={11} />
                 Edit
               </button>
             </div>
@@ -182,7 +179,7 @@ export default function ReservationsPage() {
 
       {/* Add Booking */}
       <div className="flex justify-end">
-        <button className="bg-[#d56f4d] text-white px-5 py-2 rounded-lg font-semibold hover:bg-[#c05f3d] transition-colors">
+        <button className="bg-orange-500 text-white px-5 py-2 rounded-lg text-sm font-semibold hover:bg-orange-600 transition-colors">
           + Add Booking
         </button>
       </div>

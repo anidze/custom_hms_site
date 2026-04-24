@@ -14,11 +14,11 @@ export default async function DashboardLayout({
   const session = token ? await verifySession(token) : null;
 
   return (
-    <div className="flex min-h-screen bg-slate-50">
+    <div className="flex min-h-screen bg-zinc-50">
       <Sidebar hotelName={session?.hotelName} userFullName={session?.fullName} />
-      <div className="flex-1 ml-64 flex flex-col min-h-screen">
+      <div className="flex-1 ml-60 flex flex-col min-h-screen">
         <TopHeader userFullName={session?.fullName} role="Admin" />
-        <main className="flex-1 p-8">{children}</main>
+        <main className="flex-1 p-6">{children}</main>
       </div>
     </div>
   );

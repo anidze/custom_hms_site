@@ -27,17 +27,17 @@ const STATUS_OPTIONS: HKStatus[] = ["DIRTY", "CLEAN", "CLEANING", "OUT OF SERVIC
 const PRIORITY_OPTIONS: Priority[] = ["HIGH", "LOW", "MEDIUM"];
 
 const STATUS_STYLES: Record<HKStatus, string> = {
-  DIRTY:          "bg-red-200 text-red-700",
-  CLEAN:          "bg-green-200 text-green-700",
-  CLEANING:       "bg-cyan-200 text-cyan-700",
-  "OUT OF SERVICE":"bg-yellow-200 text-yellow-700",
-  INSPECTED:      "bg-blue-200 text-blue-700",
+  DIRTY:          "bg-rose-100 text-rose-700",
+  CLEAN:          "bg-emerald-100 text-emerald-700",
+  CLEANING:       "bg-sky-100 text-sky-700",
+  "OUT OF SERVICE":"bg-zinc-100 text-zinc-500",
+  INSPECTED:      "bg-blue-100 text-blue-700",
 };
 
 const PRIORITY_STYLES: Record<Priority, string> = {
-  HIGH:   "bg-red-400 text-white",
-  LOW:    "bg-yellow-200 text-yellow-700",
-  MEDIUM: "bg-orange-300 text-white",
+  HIGH:   "bg-rose-500 text-white",
+  LOW:    "bg-amber-100 text-amber-700",
+  MEDIUM: "bg-orange-400 text-white",
 };
 
 function FilterDropdown({
@@ -56,14 +56,14 @@ function FilterDropdown({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="appearance-none bg-white border border-slate-200 rounded-lg pl-3 pr-8 py-2 text-sm text-slate-600 cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#d56f4d]"
+        className="appearance-none bg-white border border-zinc-200 rounded-lg pl-3 pr-8 py-2 text-sm text-zinc-600 cursor-pointer focus:outline-none focus:ring-1 focus:ring-orange-400"
       >
         <option value="">{label}</option>
         {options.map((o) => (
           <option key={o} value={o}>{o}</option>
         ))}
       </select>
-      <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+      <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
     </div>
   );
 }
@@ -165,7 +165,7 @@ export default function HousekeepingPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64 text-slate-400 text-sm">
+      <div className="flex items-center justify-center h-64 text-zinc-400 text-sm">
         Loading rooms...
       </div>
     );
@@ -183,7 +183,7 @@ export default function HousekeepingPage() {
         {(filterRoom || filterType || filterStatus || filterPriority || filterFloor) && (
           <button
             onClick={() => { setFilterRoom(""); setFilterType(""); setFilterStatus(""); setFilterPriority(""); setFilterFloor(""); }}
-            className="text-xs text-[#d56f4d] underline"
+            className="text-xs text-orange-500 underline"
           >
             Clear
           </button>
@@ -191,9 +191,9 @@ export default function HousekeepingPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-zinc-100 overflow-hidden">
         {/* Header */}
-        <div className="grid grid-cols-[100px_1fr_220px_160px_80px_1fr] text-xs font-semibold text-slate-500 uppercase tracking-wide border-b border-slate-100 px-6 py-3">
+        <div className="grid grid-cols-[100px_1fr_220px_160px_80px_1fr] text-[11px] font-semibold text-zinc-400 uppercase tracking-wider border-b border-zinc-100 px-6 py-3">
           <div>Room</div>
           <div>Room Type</div>
           <div>Housekeeping Status</div>
@@ -204,25 +204,25 @@ export default function HousekeepingPage() {
 
         {/* Rows */}
         {filtered.length === 0 ? (
-          <div className="text-center text-slate-400 text-sm py-10">No rooms found</div>
+          <div className="text-center text-zinc-400 text-sm py-10">No rooms found</div>
         ) : (
           filtered.map((r, idx) => (
             <div
               key={r.id}
-              className={`grid grid-cols-[100px_1fr_220px_160px_80px_1fr] items-center px-6 py-3 border-b border-slate-50 text-sm ${
-                idx % 2 === 0 ? "bg-white" : "bg-slate-50/40"
-              } hover:bg-[#fff4f1] transition-colors`}
+              className={`grid grid-cols-[100px_1fr_220px_160px_80px_1fr] items-center px-6 py-3 border-b border-zinc-50 text-sm ${
+                idx % 2 === 0 ? "bg-white" : "bg-zinc-50/40"
+              } hover:bg-orange-50/50 transition-colors`}
             >
-              <div className="font-semibold text-slate-700">{r.room}</div>
-              <div className="text-slate-600">{r.roomType}</div>
+              <div className="font-semibold text-zinc-700">{r.room}</div>
+              <div className="text-zinc-600">{r.roomType}</div>
               <div>
                 <StatusBadge value={r.status} onChange={(v) => updateStatus(r.id, v)} />
               </div>
               <div>
                 <PriorityBadge value={r.priority} onChange={(v) => updatePriority(r.id, v)} />
               </div>
-              <div className="text-slate-600">{r.floor}</div>
-              <div className="text-slate-500 text-xs">{r.comments}</div>
+              <div className="text-zinc-600">{r.floor}</div>
+              <div className="text-zinc-400 text-xs">{r.comments}</div>
             </div>
           ))
         )}
@@ -230,7 +230,7 @@ export default function HousekeepingPage() {
 
       {/* Add Task button */}
       <div className="flex justify-end">
-        <button className="bg-[#d56f4d] text-white px-5 py-2 rounded-lg font-semibold hover:bg-[#c05f3d] transition-colors">
+        <button className="bg-orange-500 text-white px-5 py-2 rounded-lg font-semibold hover:bg-orange-600 transition-colors">
           + Add Task
         </button>
       </div>

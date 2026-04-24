@@ -9,22 +9,22 @@ const DAY_NAMES = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
 
 // Mock bookings: { guest, color, monthIndex (0-based), startDay, endDay, row }
 const bookings = [
-  { guest: "Andrew",    color: "bg-green-300",  month: 11, startDay: 1,  endDay: 5,  row: 0 },
-  { guest: "John",      color: "bg-yellow-300", month: 11, startDay: 12, endDay: 17, row: 0 },
-  { guest: "Smith",     color: "bg-red-300",    month: 11, startDay: 5,  endDay: 10, row: 1 },
-  { guest: "Kabir Khan",color: "bg-yellow-200", month: 11, startDay: 1,  endDay: 5,  row: 2 },
-  { guest: "Atharva",   color: "bg-green-300",  month: 11, startDay: 8,  endDay: 12, row: 2 },
-  { guest: "Erikal",    color: "bg-cyan-200",   month: 11, startDay: 5,  endDay: 8,  row: 3 },
-  { guest: "Maddy",     color: "bg-green-200",  month: 11, startDay: 16, endDay: 19, row: 1 },
-  { guest: "Cinderella",color: "bg-cyan-200",   month: 11, startDay: 14, endDay: 18, row: 3 },
-  { guest: "Maria",     color: "bg-red-300",    month: 11, startDay: 17, endDay: 19, row: 4 },
+  { guest: "Andrew",     color: "bg-emerald-100", month: 11, startDay: 1,  endDay: 5,  row: 0 },
+  { guest: "John",       color: "bg-amber-100",   month: 11, startDay: 12, endDay: 17, row: 0 },
+  { guest: "Smith",      color: "bg-rose-100",    month: 11, startDay: 5,  endDay: 10, row: 1 },
+  { guest: "Kabir Khan", color: "bg-amber-50",    month: 11, startDay: 1,  endDay: 5,  row: 2 },
+  { guest: "Atharva",    color: "bg-emerald-100", month: 11, startDay: 8,  endDay: 12, row: 2 },
+  { guest: "Erikal",     color: "bg-sky-100",     month: 11, startDay: 5,  endDay: 8,  row: 3 },
+  { guest: "Maddy",      color: "bg-emerald-50",  month: 11, startDay: 16, endDay: 19, row: 1 },
+  { guest: "Cinderella", color: "bg-sky-100",     month: 11, startDay: 14, endDay: 18, row: 3 },
+  { guest: "Maria",      color: "bg-rose-100",    month: 11, startDay: 17, endDay: 19, row: 4 },
 ];
 
 const STATUS_FILTERS = [
-  { label: "Due In",      color: "bg-yellow-200 text-yellow-800 border border-yellow-300" },
-  { label: "Checked-out", color: "bg-cyan-200 text-cyan-800 border border-cyan-300" },
-  { label: "Due Out",     color: "bg-red-300 text-red-800 border border-red-300" },
-  { label: "Checked-In",  color: "bg-green-300 text-green-800 border border-green-300" },
+  { label: "Due In",      color: "bg-amber-50 text-amber-700 border border-amber-200" },
+  { label: "Checked-out", color: "bg-sky-50 text-sky-700 border border-sky-200" },
+  { label: "Due Out",     color: "bg-rose-50 text-rose-700 border border-rose-200" },
+  { label: "Checked-In",  color: "bg-emerald-50 text-emerald-700 border border-emerald-200" },
 ];
 
 export default function FrontdeskPage() {
@@ -62,14 +62,14 @@ export default function FrontdeskPage() {
             onClick={() => setYear((y) => y - 1)}
             className="p-1 rounded border border-slate-200 hover:bg-slate-100"
           >
-            <ChevronLeft size={16} />
+            <ChevronLeft size={14} />
           </button>
-          <span className="font-bold text-slate-800 w-12 text-center">{year}</span>
+          <span className="font-semibold text-zinc-800 w-12 text-center text-sm">{year}</span>
           <button
             onClick={() => setYear((y) => y + 1)}
-            className="p-1 rounded border border-slate-200 hover:bg-slate-100"
+            className="p-1.5 rounded-lg border border-zinc-200 hover:bg-zinc-50 text-zinc-500 transition-colors"
           >
-            <ChevronRight size={16} />
+            <ChevronRight size={14} />
           </button>
         </div>
 
@@ -79,8 +79,8 @@ export default function FrontdeskPage() {
             <button
               key={f.label}
               onClick={() => setActiveFilter(activeFilter === f.label ? null : f.label)}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${f.color} ${
-                activeFilter === f.label ? "ring-2 ring-offset-1 ring-slate-400" : ""
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all ${f.color} ${
+                activeFilter === f.label ? "ring-2 ring-offset-1 ring-zinc-300" : ""
               }`}
             >
               {f.label}
@@ -89,30 +89,30 @@ export default function FrontdeskPage() {
         </div>
 
         {/* Search */}
-        <div className="flex items-center gap-2 border border-slate-200 rounded-lg px-3 py-1.5 bg-white w-64">
-          <Search size={14} className="text-slate-400" />
+        <div className="flex items-center gap-2 border border-zinc-200 rounded-lg px-3 py-1.5 bg-white w-64">
+          <Search size={13} className="text-zinc-400" />
           <input
             type="text"
             placeholder="Search by booking no or room no"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="flex-1 outline-none text-sm text-slate-600 bg-transparent"
+            className="flex-1 outline-none text-xs text-zinc-600 bg-transparent placeholder-zinc-400"
           />
         </div>
       </div>
 
       {/* Calendar */}
-      <div className="bg-white rounded-xl shadow-sm overflow-x-auto">
+      <div className="bg-white rounded-xl border border-zinc-100 overflow-x-auto">
         {/* Month tabs */}
-        <div className="flex border-b border-slate-100">
+        <div className="flex border-b border-zinc-100">
           {MONTHS.map((m, i) => (
             <button
               key={m}
               onClick={() => setActiveMonth(i)}
-              className={`flex-1 py-2 text-xs font-semibold text-center transition-colors ${
+              className={`flex-1 py-2 text-[11px] font-medium text-center transition-colors border-b-2 ${
                 activeMonth === i
-                  ? "bg-[#d56f4d] text-white"
-                  : "text-slate-500 hover:bg-slate-50"
+                  ? "border-orange-500 text-orange-600 bg-orange-50/50"
+                  : "border-transparent text-zinc-400 hover:text-zinc-600"
               }`}
             >
               {m}
@@ -121,19 +121,13 @@ export default function FrontdeskPage() {
         </div>
 
         {/* Day header */}
-        <div className="flex border-b border-slate-100">
+        <div className="flex border-b border-zinc-100">
           {/* row label spacer */}
           <div className="w-0" />
           {days.map((d) => (
-            <div
-              key={d}
-              className="text-center shrink-0 py-1"
-              style={{ width: CELL_W }}
-            >
-              <div className="text-[10px] text-slate-400">{getDayName(d)}</div>
-              <div className="text-xs font-semibold text-slate-700">
-                {String(d).padStart(2, "0")}
-              </div>
+            <div key={d} className="text-center shrink-0 py-1" style={{ width: CELL_W }}>
+              <div className="text-[9px] text-zinc-300">{getDayName(d)}</div>
+              <div className="text-[11px] font-medium text-zinc-500">{String(d).padStart(2, "0")}</div>
             </div>
           ))}
         </div>
@@ -147,7 +141,7 @@ export default function FrontdeskPage() {
           {days.map((d) => (
             <div
               key={d}
-              className="absolute top-0 bottom-0 border-r border-slate-100"
+              className="absolute top-0 bottom-0 border-r border-zinc-50"
               style={{ left: (d - 1) * CELL_W, width: CELL_W }}
             />
           ))}
@@ -155,7 +149,7 @@ export default function FrontdeskPage() {
           {Array.from({ length: NUM_ROWS }).map((_, r) => (
             <div
               key={r}
-              className="absolute left-0 right-0 border-b border-slate-50"
+              className="absolute left-0 right-0 border-b border-zinc-50"
               style={{ top: r * ROW_H, height: ROW_H }}
             />
           ))}
@@ -170,7 +164,7 @@ export default function FrontdeskPage() {
               return (
                 <div
                   key={idx}
-                  className={`absolute rounded-md ${b.color} flex items-center px-2 text-sm font-medium text-slate-700 cursor-pointer hover:brightness-95 transition-all`}
+                  className={`absolute rounded-lg ${b.color} flex items-center px-2.5 text-xs font-medium text-zinc-700 cursor-pointer hover:brightness-95 transition-all shadow-sm`}
                   style={{ left, width, top, height: ROW_H - 20 }}
                   title={b.guest}
                 >
@@ -183,7 +177,7 @@ export default function FrontdeskPage() {
 
       {/* Add Booking button */}
       <div className="flex justify-end">
-        <button className="bg-[#d56f4d] text-white px-5 py-2 rounded-lg font-semibold hover:bg-[#c05f3d] transition-colors">
+        <button className="bg-orange-500 text-white px-5 py-2 rounded-lg text-sm font-semibold hover:bg-orange-600 transition-colors">
           + Add Booking
         </button>
       </div>
