@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { Country, City } from "country-state-city";
 import { useRouter } from "next/navigation";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, X } from "lucide-react";
 
 function todayISO() {
   return new Date().toISOString().split("T")[0];
@@ -39,7 +40,6 @@ function Req() {
   return <span className="text-rose-500 ml-0.5">*</span>;
 }
 
-const COUNTRY_CODES = ["+91", "+1", "+44", "+49", "+33", "+7", "+86", "+81", "+995"];
 const ID_TYPES = ["Passport", "Driving License", "National ID", "Other"];
 const PAYMENT_METHODS = ["Cheque", "Paypal", "Cash", "Credit Card"];
 
@@ -66,7 +66,8 @@ export default function NewBookingPage() {
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
   const [postal, setPostal] = useState("");
-  const [countryCode, setCountryCode] = useState("+91");
+  const [country, setCountry] = useState("");
+  const [countryCode, setCountryCode] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [checkIn, setCheckIn] = useState(todayISO);
@@ -86,6 +87,28 @@ export default function NewBookingPage() {
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
+  const allCountries = useMemo(() => Country.getAllCountries(), []);
+
+  const availableCities = useMemo(() => {
+    if (!country) return [];
+    const raw = City.getCitiesOfCountry(country) ?? [];
+    return [...new Set(raw.map((c) => c.name))].sort();
+  }, [country]);
+
+  function handleCountryChange(isoCode: string) {
+    setCountry(isoCode);
+    setCity("");
+    if (isoCode) {
+      const found = allCountries.find((c) => c.isoCode === isoCode);
+      if (found?.phonecode) {
+        const code = found.phonecode.split("-")[0].split(",")[0].trim();
+        setCountryCode(`+${code}`);
+      }
+    } else {
+      setCountryCode("");
+    }
+  }
+
   useEffect(() => {
     fetch("/api/rooms")
       .then((r) => r.json())
@@ -103,6 +126,10 @@ export default function NewBookingPage() {
 
   function updateGuest(idx: number, field: keyof GuestRow, value: string) {
     setGuests((g) => g.map((row, i) => (i === idx ? { ...row, [field]: value } : row)));
+  }
+
+  function removeGuest(idx: number) {
+    setGuests((g) => g.filter((_, i) => i !== idx));
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -162,11 +189,14 @@ export default function NewBookingPage() {
           Booking
         </h1>
 
-        {/* Full Name + Gender */}
-        <div className="grid grid-cols-[1fr_1fr_auto] gap-4 items-end">
-          <div>
-            <label className={LABEL}>Full Name<Req /></label>
-            <div className="grid grid-cols-2 gap-3">
+        {/* Full Name + Gender — labels on same line, inputs below */}
+        <div>
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-sm font-semibold text-zinc-700">Full Name<Req /></span>
+            <span className="text-sm font-semibold text-zinc-700">Gender</span>
+          </div>
+          <div className="flex gap-4 items-start">
+            <div className="grid grid-cols-2 gap-3 flex-1">
               <div>
                 <input
                   className={fieldErrors.firstName ? INPUT_ERR : INPUT}
@@ -186,24 +216,22 @@ export default function NewBookingPage() {
                 {fieldErrors.lastName && <p className="text-xs text-rose-500 mt-1">{fieldErrors.lastName}</p>}
               </div>
             </div>
-          </div>
-          <div />
-          <div>
-            <label className={LABEL}>Gender</label>
-            <div className="flex items-center gap-5 h-10.5">
-              {(["male", "female"] as const).map((g) => (
-                <label key={g} className="flex items-center gap-2 cursor-pointer text-sm text-zinc-700">
-                  <span
-                    onClick={() => setGender(g)}
-                    className={`w-4 h-4 rounded-full border-2 flex items-center justify-center cursor-pointer transition ${
-                      gender === g ? "border-[#0f1f38]" : "border-zinc-300"
-                    }`}
-                  >
-                    {gender === g && <span className="w-2 h-2 rounded-full bg-[#0f1f38] block" />}
-                  </span>
-                  {g.charAt(0).toUpperCase() + g.slice(1)}
-                </label>
-              ))}
+            <div className="shrink-0">
+              <div className="flex items-center gap-5 h-10">
+                {(["male", "female"] as const).map((g) => (
+                  <label key={g} className="flex items-center gap-2 cursor-pointer text-sm text-zinc-700">
+                    <span
+                      onClick={() => setGender(g)}
+                      className={`w-4 h-4 rounded-full border-2 flex items-center justify-center cursor-pointer transition ${
+                        gender === g ? "border-[#0f1f38]" : "border-zinc-300"
+                      }`}
+                    >
+                      {gender === g && <span className="w-2 h-2 rounded-full bg-[#0f1f38] block" />}
+                    </span>
+                    {g.charAt(0).toUpperCase() + g.slice(1)}
+                  </label>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -238,19 +266,65 @@ export default function NewBookingPage() {
           </div>
         </div>
 
-        {/* City + State + Postal */}
-        <div className="grid grid-cols-3 gap-4">
+        {/* Country + City + State + Postal — one row, equal columns */}
+        <div className="grid grid-cols-4 gap-4">
+          <div>
+            <label className={LABEL}>Country</label>
+            <div className="relative">
+              <SelectWrapper>
+                <select className={SELECT} value={country} onChange={(e) => handleCountryChange(e.target.value)}>
+                  <option value="">-- Select --</option>
+                  {allCountries.map((c) => (
+                    <option key={c.isoCode} value={c.isoCode}>
+                      {c.flag} {c.name}
+                    </option>
+                  ))}
+                </select>
+              </SelectWrapper>
+              {country && (
+                <button
+                  type="button"
+                  onClick={() => handleCountryChange("")}
+                  className="absolute right-8 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 z-10"
+                >
+                  <X size={13} />
+                </button>
+              )}
+            </div>
+          </div>
           <div>
             <label className={LABEL}>City</label>
-            <input className={INPUT} placeholder="Eg..NewYork" value={city} onChange={(e) => setCity(e.target.value)} />
+            <div className="relative">
+              {availableCities.length > 0 ? (
+                <SelectWrapper>
+                  <select className={SELECT} value={city} onChange={(e) => setCity(e.target.value)}>
+                    <option value="">-- Select --</option>
+                    {availableCities.map((c) => (
+                      <option key={c}>{c}</option>
+                    ))}
+                  </select>
+                </SelectWrapper>
+              ) : (
+                <input className={INPUT} placeholder="City" value={city} onChange={(e) => setCity(e.target.value)} />
+              )}
+              {city && (
+                <button
+                  type="button"
+                  onClick={() => setCity("")}
+                  className="absolute right-8 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 z-10"
+                >
+                  <X size={13} />
+                </button>
+              )}
+            </div>
           </div>
           <div>
             <label className={LABEL}>State, Province</label>
-            <input className={INPUT} placeholder="Enter your state" value={state} onChange={(e) => setState(e.target.value)} />
+            <input className={INPUT} placeholder="State" value={state} onChange={(e) => setState(e.target.value)} />
           </div>
           <div>
             <label className={LABEL}>Postal/Zipcode</label>
-            <input className={INPUT} placeholder="Eg. 123456" value={postal} onChange={(e) => setPostal(e.target.value)} />
+            <input className={INPUT} placeholder="123456" value={postal} onChange={(e) => setPostal(e.target.value)} />
           </div>
         </div>
 
@@ -261,14 +335,39 @@ export default function NewBookingPage() {
             <div className="flex gap-2">
               <SelectWrapper>
                 <select
-                  className="bg-[#0f1f38] text-white border-none rounded-lg px-3 py-2.5 text-sm font-medium outline-none appearance-none pr-7 cursor-pointer"
+                  className="w-24 bg-[#0f1f38] text-white border-none rounded-lg px-2 py-2.5 text-sm font-medium outline-none appearance-none pr-6 cursor-pointer"
                   value={countryCode}
                   onChange={(e) => setCountryCode(e.target.value)}
                 >
-                  {COUNTRY_CODES.map((c) => <option key={c}>{c}</option>)}
+                  <option value="">+</option>
+                  {allCountries.map((c) => {
+                    const code = c.phonecode.split("-")[0].split(",")[0].trim();
+                    return (
+                      <option key={c.isoCode} value={`+${code}`}>
+                        {c.flag} +{code}
+                      </option>
+                    );
+                  })}
                 </select>
               </SelectWrapper>
-              <input className={`${INPUT} flex-1`} placeholder="enter your contact no here" value={phone} onChange={(e) => setPhone(e.target.value)} type="tel" />
+              <div className="relative flex-1">
+                <input
+                  className={INPUT}
+                  placeholder="Contact number"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  type="tel"
+                />
+                {phone && (
+                  <button
+                    type="button"
+                    onClick={() => setPhone("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"
+                  >
+                    <X size={13} />
+                  </button>
+                )}
+              </div>
             </div>
           </div>
           <div>
@@ -366,7 +465,7 @@ export default function NewBookingPage() {
           <label className={LABEL}>Enter Guest Details:</label>
           <div className="space-y-3">
             {guests.map((g, idx) => (
-              <div key={idx} className="grid grid-cols-[1fr_1fr_160px_100px] gap-3 items-end">
+              <div key={idx} className="grid grid-cols-[1fr_1fr_160px_100px_auto] gap-3 items-end">
                 <div>
                   {idx === 0 && <label className="block text-xs text-zinc-500 mb-1.5">Full Name</label>}
                   <input className={INPUT} placeholder="First Name" value={g.firstName} onChange={(e) => updateGuest(idx, "firstName", e.target.value)} />
@@ -389,12 +488,31 @@ export default function NewBookingPage() {
                   {idx === 0 && <label className="block text-xs text-zinc-500 mb-1.5">Age</label>}
                   <input className={INPUT} type="number" min={0} value={g.age} onChange={(e) => updateGuest(idx, "age", e.target.value)} />
                 </div>
+                <div>
+                  {idx === 0 && <div className="mb-1.5 h-4" />}
+                  {idx > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => removeGuest(idx)}
+                      className="flex items-center justify-center w-8 h-10 rounded-lg text-rose-400 hover:text-rose-600 hover:bg-rose-50 transition"
+                      title="Remove guest"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zm-1 7a1 1 0 012 0v4a1 1 0 01-2 0V9zm4 0a1 1 0 012 0v4a1 1 0 01-2 0V9z" clipRule="evenodd" />
+                      </svg>
+                    </button>
+                  ) : <div className="w-8" />}
+                </div>
               </div>
             ))}
           </div>
           <div className="flex justify-end mt-2">
-            <button type="button" onClick={addGuest} className="text-sm text-[#0f1f38] font-semibold hover:underline">
-              +Add More
+            <button
+              type="button"
+              onClick={addGuest}
+              className="px-5 py-2 rounded-lg bg-[#0f1f38] text-white text-sm font-semibold hover:bg-[#0d1a33] transition-colors"
+            >
+              + Add More
             </button>
           </div>
         </div>
