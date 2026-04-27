@@ -13,7 +13,7 @@ const PUBLIC_PATHS = [
 // Routes that logged-in users shouldn't visit
 const AUTH_ONLY_PATHS = ["/login", "/register"];
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   // Allow Next.js internals and static files

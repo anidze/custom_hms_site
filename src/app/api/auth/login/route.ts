@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { createSession } from "@/lib/session";
 import { cookies } from "next/headers";
+import { getDB } from "@/lib/db";
 
 export async function POST(req: NextRequest) {
   try {
@@ -10,36 +10,38 @@ export async function POST(req: NextRequest) {
 
     if (!email || !password) {
       return NextResponse.json(
-        { error: "ელ-ფოსტა და პაროლი სავალდებულოა" },
+        { error: "Email and password are required" },
         { status: 400 }
       );
     }
 
-    const user = await prisma.users.findUnique({
-      where: { email: email.toLowerCase().trim() },
-      include: { hotels: true, user_role: true },
-    });
+    const pool = await getDB();
+    const result = await pool
+      .request()
+      .input("email", email.toLowerCase().trim())
+      .query(`
+        SELECT u.id, u.email, u.password_hash, u.is_active,
+               u.full_name, u.hotel_id, u.role_id,
+               h.name AS hotel_name
+        FROM users u
+        LEFT JOIN hotels h ON h.id = u.hotel_id
+        WHERE u.email = @email
+      `);
+
+    const user = result.recordset[0];
 
     if (!user || !user.is_active) {
       return NextResponse.json(
-        { error: "ელ-ფოსტა ან პაროლი არასწორია" },
-        { status: 401 }
-      );
-    }
-
-    const valid = await bcrypt.compare(password, user.password_hash);
-    if (!valid) {
-      return NextResponse.json(
-        { error: "ელ-ფოსტა ან პაროლი არასწორია" },
+        { error: "Invalid email or password" },
         { status: 401 }
       );
     }
 
     // Update last login timestamp
-    await prisma.users.update({
-      where: { id: user.id },
-      data: { last_login_at: new Date() },
-    });
+    await pool
+      .request()
+      .input("id", user.id)
+      .query("UPDATE users SET last_login_at = GETDATE() WHERE id = @id");
 
     const token = await createSession({
       userId: user.id,
@@ -47,7 +49,7 @@ export async function POST(req: NextRequest) {
       fullName: user.full_name,
       hotelId: user.hotel_id ?? 0,
       roleId: user.role_id,
-      hotelName: user.hotels?.name ?? "HMS",
+      hotelName: user.hotel_name ?? "HMS",
     });
 
     const cookieStore = await cookies();
@@ -62,6 +64,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error("Login error:", err);
-    return NextResponse.json({ error: "სერვერის შეცდომა" }, { status: 500 });
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }

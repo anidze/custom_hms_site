@@ -1,4 +1,4 @@
-// ლოგინ ფორმა — ცალკე კომპონენტი
+// Login form component
 "use client";
 
 import { useState, type FormEvent } from "react";
@@ -32,11 +32,11 @@ export default function LoginForm({
         body: JSON.stringify({ email, password }),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.error ?? "შესვლა ვერ მოხერხდა"); setIsLoading(false); return; }
+      if (!res.ok) { setError(data.error ?? "Login failed"); setIsLoading(false); return; }
       router.push("/dashboard");
       router.refresh();
     } catch {
-      setError("სერვერთან კავშირი ვერ მოხერხდა");
+      setError("Could not connect to server");
       setIsLoading(false);
     }
   }
@@ -61,7 +61,7 @@ export default function LoginForm({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
             <label htmlFor="email" className="block text-xs font-medium text-zinc-600 uppercase tracking-wide">
-              ელ-ფოსტა
+              Email
             </label>
             <input
               id="email" type="email" required
@@ -73,7 +73,7 @@ export default function LoginForm({
 
           <div className="space-y-1.5">
             <label htmlFor="password" className="block text-xs font-medium text-zinc-600 uppercase tracking-wide">
-              პაროლი
+              Password
             </label>
             <input
               id="password" type="password" required
@@ -87,7 +87,7 @@ export default function LoginForm({
             type="submit" disabled={isLoading}
             className="mt-2 w-full rounded-lg bg-[#0f1f38] py-2.5 text-sm font-semibold text-white transition-colors hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-400/40 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isLoading ? "შემოწმება..." : "შესვლა"}
+            {isLoading ? "Checking..." : "Sign In"}
           </button>
         </form>
       </div>

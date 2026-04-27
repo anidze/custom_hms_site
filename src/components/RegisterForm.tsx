@@ -39,11 +39,11 @@ export default function RegisterForm() {
         body: JSON.stringify({ full_name: fullName, email, password, hotel_id: Number(hotelId) }),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.error ?? "რეგისტრაცია ვერ მოხერხდა"); setIsLoading(false); return; }
-      setSuccess("რეგისტრაცია წარმატებული! გადამისამართება...");
+      if (!res.ok) { setError(data.error ?? "Registration failed"); setIsLoading(false); return; }
+      setSuccess("Registration successful! Redirecting...");
       setTimeout(() => router.push("/login"), 1500);
     } catch {
-      setError("სერვერთან კავშირი ვერ მოხერხდა");
+      setError("Could not connect to server");
       setIsLoading(false);
     }
   }
@@ -52,8 +52,8 @@ export default function RegisterForm() {
     <div className="w-full max-w-sm">
       {/* Header */}
       <div className="mb-8 text-center">
-        <h1 className="text-xl font-semibold text-zinc-900">ახალი ანგარიში</h1>
-        <p className="text-sm text-zinc-400 mt-0.5">HMS-ში რეგისტრაცია</p>
+        <h1 className="text-xl font-semibold text-zinc-900">Create Account</h1>
+        <p className="text-sm text-zinc-400 mt-0.5">Register for HMS</p>
       </div>
 
       <div className="bg-white border border-zinc-200 rounded-2xl p-7 shadow-sm">
@@ -66,30 +66,30 @@ export default function RegisterForm() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <label htmlFor="fullName" className={labelClass}>სრული სახელი</label>
+            <label htmlFor="fullName" className={labelClass}>Full Name</label>
             <input id="fullName" type="text" required value={fullName}
-              onChange={(e) => setFullName(e.target.value)} placeholder="გიორგი გიორგაძე" className={inputClass} />
+              onChange={(e) => setFullName(e.target.value)} placeholder="John Smith" className={inputClass} />
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor="email" className={labelClass}>ელ-ფოსტა</label>
+            <label htmlFor="email" className={labelClass}>Email</label>
             <input id="email" type="email" required value={email}
               onChange={(e) => setEmail(e.target.value)} placeholder="name@hotel.com" className={inputClass} />
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor="password" className={labelClass}>პაროლი</label>
+            <label htmlFor="password" className={labelClass}>Password</label>
             <input id="password" type="password" required minLength={8} value={password}
-              onChange={(e) => setPassword(e.target.value)} placeholder="მინ. 8 სიმბოლო" className={inputClass} />
+              onChange={(e) => setPassword(e.target.value)} placeholder="Min. 8 characters" className={inputClass} />
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor="hotel" className={labelClass}>სასტუმრო</label>
+            <label htmlFor="hotel" className={labelClass}>Hotel</label>
             <select id="hotel" required value={hotelId}
               onChange={(e) => setHotelId(e.target.value)} disabled={loadingHotels}
               className={`${inputClass} disabled:opacity-50`}
             >
-              <option value="">{loadingHotels ? "იტვირთება..." : "აირჩიე სასტუმრო"}</option>
+              <option value="">{loadingHotels ? "Loading..." : "Select hotel"}</option>
               {hotels.map((h) => (
                 <option key={h.id} value={h.id}>{h.name} — {h.city}</option>
               ))}
@@ -99,15 +99,15 @@ export default function RegisterForm() {
           <button type="submit" disabled={isLoading || loadingHotels}
             className="mt-2 w-full rounded-lg bg-orange-500 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-400/40 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isLoading ? "მიმდინარეობს..." : "რეგისტრაცია"}
+            {isLoading ? "Processing..." : "Register"}
           </button>
         </form>
       </div>
 
       <p className="mt-5 text-center text-sm text-zinc-400">
-        უკვე გაქვს ანგარიში?{" "}
+        Already have an account?{" "}
         <Link href="/login" className="font-medium text-orange-500 hover:text-orange-600 transition-colors">
-          შესვლა
+          Sign In
         </Link>
       </p>
     </div>

@@ -1,16 +1,17 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { getDB } from "@/lib/db";
 
 export async function GET() {
   try {
-    const hotels = await prisma.hotels.findMany({
-      where: { is_active: true },
-      select: { id: true, name: true, city: true },
-      orderBy: { name: "asc" },
-    });
-    return NextResponse.json(hotels);
+    const pool = await getDB();
+    const result = await pool
+      .request()
+      .query(
+        "SELECT id, name, city FROM hotels WHERE is_active = 1 ORDER BY name ASC"
+      );
+    return NextResponse.json(result.recordset);
   } catch (err) {
     console.error("Hotels fetch error:", err);
-    return NextResponse.json({ error: "სერვერის შეცდომა" }, { status: 500 });
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
 }

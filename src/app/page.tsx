@@ -1,7 +1,7 @@
 
 import { redirect } from "next/navigation";
 
-// ✅ Root page — რედირექტი login-ზე
+// ✅ Root page — redirect to login
 export default function RootPage() {
   redirect("/login");
 }

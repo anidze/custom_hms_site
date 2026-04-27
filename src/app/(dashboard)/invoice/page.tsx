@@ -1,4 +1,4 @@
-// Invoice — ინვოისი/გადახდები
+// Invoice — payments
 export default function InvoicePage() {
   return (
     <div>

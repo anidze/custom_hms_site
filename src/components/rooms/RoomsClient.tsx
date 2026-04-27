@@ -125,17 +125,17 @@ export default function RoomsClient({ rooms, hotelName }: RoomsClientProps) {
         {/* ── Summary badges ──────────────────────────────────── */}
         <div className="flex gap-4 mb-4">
           <div className="bg-white rounded-lg px-4 py-2 shadow-sm border border-slate-100 text-sm">
-            <span className="text-slate-500">სულ ოთახი: </span>
+            <span className="text-slate-500">Total Rooms: </span>
             <span className="font-bold text-slate-800">{rooms.length}</span>
           </div>
           <div className="bg-green-50 rounded-lg px-4 py-2 shadow-sm border border-green-100 text-sm">
-            <span className="text-slate-500">თავისუფალი: </span>
+            <span className="text-slate-500">Available: </span>
             <span className="font-bold text-green-700">
               {rooms.filter((r) => r.isAvailable).length}
             </span>
           </div>
           <div className="bg-orange-50 rounded-lg px-4 py-2 shadow-sm border border-orange-100 text-sm">
-            <span className="text-slate-500">დაკავებული: </span>
+            <span className="text-slate-500">Occupied: </span>
             <span className="font-bold text-orange-600">
               {rooms.filter((r) => !r.isAvailable).length}
             </span>
@@ -160,7 +160,7 @@ export default function RoomsClient({ rooms, hotelName }: RoomsClientProps) {
               {filtered.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="text-center py-12 text-slate-400">
-                    ოთახები ვერ მოიძებნა.
+                    No rooms found.
                   </td>
                 </tr>
               ) : (
@@ -180,7 +180,7 @@ export default function RoomsClient({ rooms, hotelName }: RoomsClientProps) {
                           bookingStatusStyle[room.bookingStatus]
                         }`}
                       >
-                        {room.bookingStatus === "Available" ? "თავისუფალი" : "დაკავებული"}
+                        {room.bookingStatus === "Available" ? "Available" : "Occupied"}
                       </span>
                     </td>
                     <td className="px-4 py-4 text-right">

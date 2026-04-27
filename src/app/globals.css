@@ -1,17 +1,17 @@
 @import "tailwindcss";
 
 @theme {
-  /* აქ ამატებთ თქვენს ფერებს და ცვლადებს */
+  /* Add your colors and variables here */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
 
-  /* HMS სპეციფიკური ფერები, თუ Slate გჭირდებათ */
+  /* HMS-specific colors */
   --color-hms-slate: #64748b; /* slate-500 */
 }
 
 :root {
   --background: #f9f8f7;
-  --foreground: #020617; /* Slate-950 (შავი) */
+  --foreground: #020617; /* Slate-950 (black) */
 }
 
 @media (prefers-color-scheme: dark) {

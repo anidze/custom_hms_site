@@ -1,4 +1,4 @@
-// ლოგინ გვერდი
+// Login page
 import LoginForm from "@/components/LoginForm";
 
 export default function LoginPage() {

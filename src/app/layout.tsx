@@ -12,9 +12,8 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-// საიტის მეტა-ინფორმაცია — ბრაუზერის tab-ში ჩანს
 export const metadata: Metadata = {
-  title: "HMS — სასტუმროს მართვის სისტემა",
+  title: "HMS — Hotel Management System",
   description: "Hotel Management System",
 };
 
