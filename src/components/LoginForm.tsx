@@ -91,6 +91,13 @@ export default function LoginForm({
           </button>
         </form>
       </div>
+
+      <p className="mt-5 text-center text-sm text-zinc-400">
+        Don&apos;t have an account?{" "}
+        <Link href="/register" className="font-medium text-orange-500 hover:text-orange-600 transition-colors">
+          Register
+        </Link>
+      </p>
     </div>
   );
 }

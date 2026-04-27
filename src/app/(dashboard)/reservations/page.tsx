@@ -223,7 +223,10 @@ export default function ReservationsPage() {
 
                 {/* Edit */}
                 <div>
-                  <button className="flex items-center gap-1 border border-zinc-200 rounded-md px-2 py-1 text-xs text-zinc-500 hover:bg-zinc-100 transition-colors">
+                  <button
+                    onClick={() => router.push(`/reservations/${r.id}/edit`)}
+                    className="flex items-center gap-1 border border-zinc-200 rounded-md px-2 py-1 text-xs text-zinc-500 hover:bg-zinc-100 transition-colors"
+                  >
                     <Pencil size={11} />
                     Edit
                   </button>

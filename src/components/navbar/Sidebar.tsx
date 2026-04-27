@@ -33,9 +33,10 @@ const navItems = [
 interface SidebarProps {
   hotelName?: string;
   userFullName?: string;
+  logoSrc?: string;
 }
 
-export default function Sidebar({ hotelName = "HMS", userFullName }: SidebarProps) {
+export default function Sidebar({ hotelName = "HMS", userFullName, logoSrc }: SidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
@@ -58,12 +59,12 @@ export default function Sidebar({ hotelName = "HMS", userFullName }: SidebarProp
           collapsed ? "justify-center px-0" : ""
         }`}
       >
-        <div className="relative w-7 h-7 rounded-lg overflow-hidden shrink-0">
+        <div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0">
           <Image
-            src="/images/Eldream tower at sunset1.png"
+            src={logoSrc ?? "/images/CHMS.png"}
             alt={hotelName}
             fill
-            sizes="28px"
+            sizes="40px"
             className="object-cover"
             priority
           />
@@ -83,14 +84,14 @@ export default function Sidebar({ hotelName = "HMS", userFullName }: SidebarProp
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 py-3 px-2 space-y-0.5 overflow-y-auto">
+      <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
         {/* Notifications */}
         <Link
           href="#"
           title={collapsed ? "Notification" : undefined}
-          className="flex items-center gap-3 px-3 py-2 rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-white/5 transition-colors text-sm"
+          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-white/5 transition-colors text-[13px]"
         >
-          <Bell size={15} className="shrink-0" />
+          <Bell size={18} className="shrink-0" />
           {!collapsed && <span>Notification</span>}
         </Link>
 
@@ -103,7 +104,7 @@ export default function Sidebar({ hotelName = "HMS", userFullName }: SidebarProp
               key={href}
               href={href}
               title={collapsed ? label : undefined}
-              className={`relative flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm ${
+              className={`relative flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-[13px] ${
                 active
                   ? "bg-white/[0.07] text-white"
                   : "text-zinc-500 hover:text-zinc-200 hover:bg-white/5"
@@ -112,7 +113,7 @@ export default function Sidebar({ hotelName = "HMS", userFullName }: SidebarProp
               {active && (
                 <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-orange-500 rounded-r-full" />
               )}
-              <Icon size={15} className="shrink-0" />
+              <Icon size={18} className="shrink-0" />
               {!collapsed && <span className="font-medium">{label}</span>}
             </Link>
           );
@@ -124,18 +125,18 @@ export default function Sidebar({ hotelName = "HMS", userFullName }: SidebarProp
         <Link
           href="#"
           title={collapsed ? "Settings" : undefined}
-          className="flex items-center gap-3 px-3 py-2 rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-white/5 transition-colors text-sm"
+          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-white/5 transition-colors text-[13px]"
         >
-          <Settings size={15} className="shrink-0" />
+          <Settings size={18} className="shrink-0" />
           {!collapsed && <span className="font-medium">Settings</span>}
         </Link>
 
         <button
           onClick={handleLogout}
           title={collapsed ? "Logout" : undefined}
-          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-red-500/10 transition-colors text-sm"
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-zinc-500 hover:text-red-400 hover:bg-red-500/10 transition-colors text-[13px]"
         >
-          <LogOut size={15} className="shrink-0" />
+          <LogOut size={18} className="shrink-0" />
           {!collapsed && <span className="font-medium">Logout</span>}
         </button>
 
