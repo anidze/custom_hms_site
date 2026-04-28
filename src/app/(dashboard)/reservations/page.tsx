@@ -242,7 +242,7 @@ export default function ReservationsPage() {
           onClick={() => router.push("/reservations/new")}
           className="bg-[#0f1f38] text-white px-5 py-2 rounded-lg text-sm font-semibold hover:bg-[#0d1a33] transition-colors"
         >
-          + Add Booking
+          Add Booking
         </button>
       </div>
     </div>

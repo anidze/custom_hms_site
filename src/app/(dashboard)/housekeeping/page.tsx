@@ -20,7 +20,7 @@ interface ApiRoom {
   id: number;
   room_number: string;
   floor: number | null;
-  room_type: { name_eng: string };
+  room_type_name: string;
 }
 
 const STATUS_OPTIONS: HKStatus[] = ["DIRTY", "CLEAN", "CLEANING", "OUT OF SERVICE", "INSPECTED"];
@@ -131,7 +131,7 @@ export default function HousekeepingPage() {
           data.map((r) => ({
             id: r.id,
             room: `#${r.room_number}`,
-            roomType: r.room_type.name_eng,
+            roomType: r.room_type_name,
             floor: r.floor != null ? String(r.floor).padStart(2, "0") : "01",
             status: "CLEAN" as HKStatus,
             priority: "LOW" as Priority,

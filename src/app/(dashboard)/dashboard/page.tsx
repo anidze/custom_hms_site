@@ -1,48 +1,74 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   Cell, PieChart, Pie,
 } from "recharts";
 
-const statCards = [
+// ── Types ─────────────────────────────────────────────────────────────────────
+interface DashboardStats {
+  checkInToday:  number;
+  checkOutToday: number;
+  bookingsToday: number;
+  inHouse:       number;
+  totalRooms:    number;
+  availableRooms: number;
+  occupiedRooms:  number;
+  monthlyOccupancy: { month: string; count: number; occupancy: number }[];
+  paymentMethods:   { name: string; value: number; color: string }[];
+}
+
+// ─── placeholder kept so file compiles before data loads ──────────────────────
+const _statCards_placeholder = [
   { label: "Check-In",  sub: "Today", value: "201", total: "650", color: "text-amber-500" },
   { label: "Check-Out", sub: "Today", value: "432", total: "650", color: "text-sky-500" },
   { label: "Bookings",  sub: "Today", value: "179", total: "650", color: "text-emerald-500" },
   { label: "In-House",  sub: "Today", value: "78",  total: "650", color: "text-rose-500" },
 ];
 
-const roomStatusData = [
-  { name: "Occupied",  value: 114, color: "#60a5fa" },
-  { name: "Inspected", value: 75,  color: "#fb923c" },
-  { name: "Clean",     value: 30,  color: "#4ade80" },
-  { name: "Dirty",     value: 9,   color: "#f87171" },
-];
-
-const occupancyData = [
-  { month: "Mar", excellent: 72, average: 72, low: 0 },
-  { month: "Apr", excellent: 0,  average: 60, low: 0 },
-  { month: "May", excellent: 0,  average: 45, low: 28 },
-  { month: "Jun", excellent: 99, average: 0,  low: 0 },
-  { month: "Jul", excellent: 75, average: 72, low: 0 },
-  { month: "Aug", excellent: 0,  average: 48, low: 26 },
-  { month: "Sep", excellent: 0,  average: 72, low: 0 },
-  { month: "Oct", excellent: 0,  average: 65, low: 0 },
-  { month: "Nov", excellent: 0,  average: 78, low: 0 },
-  { month: "Dec", excellent: 95, average: 0,  low: 0 },
-  { month: "Jan", excellent: 0,  average: 62, low: 0 },
-  { month: "Feb", excellent: 0,  average: 75, low: 0 },
-];
-
-const referralsData = [
-  { name: "Friends",      value: 40, color: "#facc15" },
-  { name: "Social Media", value: 30, color: "#a78bfa" },
-  { name: "Websites",     value: 20, color: "#4ade80" },
-  { name: "Digital Ads",  value: 10, color: "#f87171" },
-];
+void _statCards_placeholder;
 
 export default function DashboardPage() {
-  const roomTotal = roomStatusData.reduce((s, d) => s + d.value, 0);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/dashboard/stats")
+      .then((r) => r.json())
+      .then((data) => setStats(data))
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64 text-zinc-400 text-sm">
+        Loading dashboard...
+      </div>
+    );
+  }
+
+  if (!stats) {
+    return (
+      <div className="flex items-center justify-center h-64 text-rose-400 text-sm">
+        Failed to load dashboard data.
+      </div>
+    );
+  }
+
+  const statCards = [
+    { label: "Check-In",  sub: "Today", value: stats.checkInToday,  total: stats.totalRooms, color: "text-amber-500" },
+    { label: "Check-Out", sub: "Today", value: stats.checkOutToday, total: stats.totalRooms, color: "text-sky-500" },
+    { label: "Bookings",  sub: "Today", value: stats.bookingsToday, total: stats.totalRooms, color: "text-emerald-500" },
+    { label: "In-House",  sub: "Today", value: stats.inHouse,       total: stats.totalRooms, color: "text-rose-500" },
+  ];
+
+  const roomStatusData = [
+    { name: "Occupied",  value: stats.occupiedRooms,  color: "#60a5fa" },
+    { name: "Available", value: stats.availableRooms, color: "#4ade80" },
+  ];
+  const roomTotal = stats.totalRooms || 1;
 
   return (
     <div className="space-y-5">
@@ -102,58 +128,64 @@ export default function DashboardPage() {
         <div className="bg-white rounded-xl border border-zinc-100 p-5">
           <div className="flex items-center justify-between mb-4">
             <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Occupancy Statistic</p>
-            <span className="text-[11px] text-zinc-400 border border-zinc-100 rounded-md px-2 py-0.5">Monthly</span>
+            <span className="text-[11px] text-zinc-400 border border-zinc-100 rounded-md px-2 py-0.5">
+              {new Date().getFullYear()} Monthly
+            </span>
           </div>
           <ResponsiveContainer width="100%" height={180}>
-            <BarChart data={occupancyData} barCategoryGap="25%">
+            <BarChart data={stats.monthlyOccupancy} barCategoryGap="25%">
               <XAxis dataKey="month" tick={{ fontSize: 10, fill: "#a1a1aa" }} axisLine={false} tickLine={false} />
-              <YAxis tickFormatter={(v) => `${v}%`} tick={{ fontSize: 10, fill: "#a1a1aa" }} axisLine={false} tickLine={false} domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} />
-              <Tooltip formatter={(v) => `${v}%`} contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e4e4e7" }} />
-              <Bar dataKey="excellent" name="Excellent" fill="#4ade80" radius={[3, 3, 0, 0]} />
-              <Bar dataKey="average"   name="Average"   fill="#60a5fa" radius={[3, 3, 0, 0]} />
-              <Bar dataKey="low"       name="Low"       fill="#f87171" radius={[3, 3, 0, 0]} />
+              <YAxis tick={{ fontSize: 10, fill: "#a1a1aa" }} axisLine={false} tickLine={false} />
+              <Tooltip
+                formatter={(v) => [`${v} bookings`]}
+                contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e4e4e7" }}
+              />
+              <Bar dataKey="count" name="Bookings" fill="#60a5fa" radius={[3, 3, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
           <div className="flex gap-4 mt-3">
-            {[["#4ade80", "Excellent"], ["#60a5fa", "Average"], ["#f87171", "Low"]].map(([color, label]) => (
-              <div key={label} className="flex items-center gap-1.5 text-[11px] text-zinc-400">
-                <span className="w-2.5 h-2.5 rounded-sm" style={{ background: color }} />
-                {label}
-              </div>
-            ))}
+            <div className="flex items-center gap-1.5 text-[11px] text-zinc-400">
+              <span className="w-2.5 h-2.5 rounded-sm" style={{ background: "#60a5fa" }} />
+              Bookings per month
+            </div>
           </div>
         </div>
 
-        {/* Referrals */}
+        {/* Payment methods */}
         <div className="bg-white rounded-xl border border-zinc-100 p-5">
-          <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-4">Hotel Referrals</p>
-          <div className="flex items-center gap-5">
-            <div className="flex-1 space-y-3">
-              {referralsData.map((d) => (
-                <div key={d.name} className="flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full shrink-0" style={{ background: d.color }} />
-                    <span className="text-zinc-500">{d.name}</span>
+          <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-4">Payment Methods</p>
+          {stats.paymentMethods.length === 0 ? (
+            <div className="flex items-center justify-center h-32 text-zinc-400 text-sm">
+              No booking data yet
+            </div>
+          ) : (
+            <div className="flex items-center gap-5">
+              <div className="flex-1 space-y-3">
+                {stats.paymentMethods.map((d) => (
+                  <div key={d.name} className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full shrink-0" style={{ background: d.color }} />
+                      <span className="text-zinc-500">{d.name}</span>
+                    </div>
+                    <span className="font-semibold text-zinc-700">{d.value}%</span>
                   </div>
-                  <span className="font-semibold text-zinc-700">{d.value}%</span>
-                </div>
-              ))}
+                ))}
+              </div>
+              <div className="relative shrink-0">
+                <PieChart width={120} height={120}>
+                  <Pie data={stats.paymentMethods} cx={55} cy={55} innerRadius={32} outerRadius={55}
+                    paddingAngle={2} dataKey="value" stroke="none">
+                    {stats.paymentMethods.map((e) => <Cell key={e.name} fill={e.color} />)}
+                  </Pie>
+                </PieChart>
+                <span className="absolute inset-0 flex items-center justify-center text-xs font-semibold text-zinc-700">
+                  100%
+                </span>
+              </div>
             </div>
-            <div className="relative shrink-0">
-              <PieChart width={120} height={120}>
-                <Pie data={referralsData} cx={55} cy={55} innerRadius={32} outerRadius={55}
-                  paddingAngle={2} dataKey="value" stroke="none">
-                  {referralsData.map((e) => <Cell key={e.name} fill={e.color} />)}
-                </Pie>
-              </PieChart>
-              <span className="absolute inset-0 flex items-center justify-center text-xs font-semibold text-zinc-700">
-                100%
-              </span>
-            </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
   );
 }
-

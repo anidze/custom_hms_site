@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Search, ChevronDown, MoreVertical } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -27,6 +28,7 @@ interface RoomsClientProps {
 }
 
 export default function RoomsClient({ rooms, hotelName }: RoomsClientProps) {
+  const router = useRouter();
   const [activeFilter, setActiveFilter] = useState<"all" | "available" | "booked">("all");
   const [selectedFloor, setSelectedFloor] = useState<string>("all");
   const [search, setSearch] = useState("");
@@ -64,9 +66,14 @@ export default function RoomsClient({ rooms, hotelName }: RoomsClientProps) {
         <h1 className="text-lg font-bold text-slate-800 tracking-wide">
           ROOMS — {hotelName}
         </h1>
-        <button className="bg-[#d56f4d] hover:bg-[#c4623f] text-white text-sm font-semibold px-5 py-2 rounded-lg transition-colors">
-          Add Booking
+          <div className="flex justify-end">
+        <button
+          onClick={() => router.push("/reservations/new")}
+          className="bg-[#0f1f38] text-white px-5 py-2 rounded-lg text-sm font-semibold hover:bg-[#0d1a33] transition-colors"
+        >
+           Add Booking
         </button>
+      </div>
       </div>
 
       <div className="flex-1 p-8 bg-slate-50">
@@ -117,9 +124,9 @@ export default function RoomsClient({ rooms, hotelName }: RoomsClientProps) {
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           </div>
 
-          <button className="bg-[#d56f4d] hover:bg-[#c4623f] text-white text-sm font-semibold px-5 py-2 rounded-lg transition-colors whitespace-nowrap">
+          {/* <button className="bg-[#d56f4d] hover:bg-[#c4623f] text-white text-sm font-semibold px-5 py-2 rounded-lg transition-colors whitespace-nowrap">
             Add room
-          </button>
+          </button> */}
         </div>
 
         {/* ── Summary badges ──────────────────────────────────── */}

@@ -22,6 +22,14 @@ interface GuestRow {
   age: string;
 }
 
+interface AvailableRoom {
+  id: number;
+  room_number: string;
+  floor: number | null;
+  room_type_name: string;
+  price_per_night: number;
+}
+
 const INPUT =
   "w-full bg-white border border-zinc-200 rounded-lg px-3.5 py-2.5 text-sm text-zinc-700 placeholder-zinc-400 outline-none focus:ring-2 focus:ring-[#c1604a]/30 focus:border-[#c1604a] transition";
 
@@ -86,6 +94,13 @@ export default function NewBookingPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  // Room assignment modal
+  const [savedBookingId, setSavedBookingId] = useState<number | null>(null);
+  const [showRoomModal, setShowRoomModal] = useState(false);
+  const [availableRooms, setAvailableRooms] = useState<AvailableRoom[]>([]);
+  const [loadingRooms, setLoadingRooms] = useState(false);
+  const [assigningRoomId, setAssigningRoomId] = useState<number | null>(null);
 
   const allCountries = useMemo(() => Country.getAllCountries(), []);
 
@@ -171,7 +186,22 @@ export default function NewBookingPage() {
         setError(data.error ?? "Unknown error");
         return;
       }
-      router.push("/reservations");
+
+      // Booking saved — show room assignment modal
+      setSavedBookingId(data.bookingId);
+      setShowRoomModal(true);
+      setLoadingRooms(true);
+      try {
+        const roomsRes = await fetch(
+          `/api/rooms/available?roomType=${encodeURIComponent(roomType)}&checkIn=${checkIn}&checkOut=${checkOut}`
+        );
+        const roomsData = await roomsRes.json();
+        setAvailableRooms(Array.isArray(roomsData) ? roomsData : []);
+      } catch {
+        setAvailableRooms([]);
+      } finally {
+        setLoadingRooms(false);
+      }
     } catch {
       setError("Network error");
     } finally {
@@ -179,7 +209,26 @@ export default function NewBookingPage() {
     }
   }
 
+  async function handleAssignRoom(roomId: number) {
+    if (!savedBookingId) return;
+    setAssigningRoomId(roomId);
+    try {
+      await fetch(`/api/bookings/${savedBookingId}/assign-room`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roomId }),
+      });
+    } catch {
+      // ignore — still redirect
+    } finally {
+      setAssigningRoomId(null);
+      setShowRoomModal(false);
+      router.push("/reservations");
+    }
+  }
+
   return (
+    <>
     <div className="min-h-screen bg-[#fdf0eb] flex justify-center py-10 px-4">
       <form
         onSubmit={handleSubmit}
@@ -570,5 +619,71 @@ export default function NewBookingPage() {
         </div>
       </form>
     </div>
+
+    {/* ── Room Assignment Modal ──────────────────────────────────────── */}
+    {showRoomModal && (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl flex flex-col max-h-[80vh]">
+          {/* Header */}
+          <div className="p-6 border-b border-zinc-100 shrink-0">
+            <h2 className="text-lg font-bold text-zinc-800">Assign a Room</h2>
+            <p className="text-sm text-zinc-500 mt-1">
+              {roomType} &middot; {checkIn} &rarr; {checkOut}
+            </p>
+          </div>
+
+          {/* Room list */}
+          <div className="flex-1 overflow-y-auto p-6">
+            {loadingRooms ? (
+              <div className="text-center py-10 text-zinc-400 text-sm">Loading available rooms...</div>
+            ) : availableRooms.length === 0 ? (
+              <div className="text-center py-10 text-zinc-400 text-sm">
+                No available rooms for{" "}
+                <span className="font-semibold">{roomType}</span>{" "}
+                during this period.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {availableRooms.map((room) => (
+                  <div
+                    key={room.id}
+                    className="flex items-center justify-between p-4 rounded-xl border border-zinc-200 hover:border-[#c1604a] transition-colors"
+                  >
+                    <div>
+                      <p className="font-semibold text-zinc-800 text-sm">Room {room.room_number}</p>
+                      <p className="text-xs text-zinc-500 mt-0.5">
+                        Floor {room.floor ?? "—"} &middot; {room.room_type_name} &middot;{" "}
+                        &#8382;{Number(room.price_per_night).toFixed(2)}/night
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => handleAssignRoom(room.id)}
+                      disabled={assigningRoomId === room.id}
+                      className="px-4 py-1.5 rounded-lg bg-[#0f1f38] text-white text-xs font-semibold hover:bg-[#c1604a] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {assigningRoomId === room.id ? "Saving..." : "Select"}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="p-6 border-t border-zinc-100 shrink-0">
+            <button
+              onClick={() => {
+                setShowRoomModal(false);
+                router.push("/reservations");
+              }}
+              className="w-full py-2.5 rounded-lg border border-zinc-200 text-sm font-semibold text-zinc-600 hover:bg-zinc-50 transition-colors"
+            >
+              Skip — assign later
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
