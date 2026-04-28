@@ -14,9 +14,8 @@ import {
   FileText,
   TrendingUp,
   LogOut,
-  Settings,
-  ChevronLeft,
-  ChevronRight,
+  UserPlus,
+  X,
   Bell,
 } from "lucide-react";
 
@@ -34,9 +33,10 @@ interface SidebarProps {
   hotelName?: string;
   userFullName?: string;
   logoSrc?: string;
+  roleName?: string;
 }
 
-export default function Sidebar({ hotelName = "HMS", userFullName, logoSrc }: SidebarProps) {
+export default function Sidebar({ hotelName = "HMS", userFullName, logoSrc, roleName }: SidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
@@ -49,28 +49,25 @@ export default function Sidebar({ hotelName = "HMS", userFullName, logoSrc }: Si
 
   return (
     <aside
+      onMouseEnter={() => setCollapsed(false)}
       className={`${
         collapsed ? "w-[68px]" : "w-60"
       } bg-zinc-950 flex flex-col fixed h-full transition-[width] duration-200 ease-in-out z-20 border-r border-zinc-900`}
     >
       {/* Brand */}
-      <div
-        className={`h-14 flex items-center shrink-0 border-b border-zinc-900 px-4 gap-3 ${
-          collapsed ? "justify-center px-0" : ""
-        }`}
-      >
-        <div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0">
+      <div className="h-14 flex items-center shrink-0 border-b border-zinc-900 px-3 gap-2.5">
+        <div className="relative w-9 h-9 rounded-lg overflow-hidden shrink-0">
           <Image
             src={logoSrc ?? "/images/CHMS.png"}
             alt={hotelName}
             fill
-            sizes="40px"
+            sizes="36px"
             className="object-cover"
             priority
           />
         </div>
         {!collapsed && (
-          <div className="flex flex-col min-w-0">
+          <div className="flex flex-col min-w-0 flex-1">
             <span className="text-[13px] font-semibold text-white truncate leading-tight">
               {hotelName}
             </span>
@@ -80,6 +77,15 @@ export default function Sidebar({ hotelName = "HMS", userFullName, logoSrc }: Si
               </span>
             )}
           </div>
+        )}
+        {!collapsed && (
+          <button
+            onClick={() => setCollapsed(true)}
+            title="Close sidebar"
+            className="ml-auto p-1.5 rounded-lg bg-orange-500 hover:bg-orange-600 text-white transition-colors shrink-0"
+          >
+            <X size={14} />
+          </button>
         )}
       </div>
 
@@ -122,14 +128,16 @@ export default function Sidebar({ hotelName = "HMS", userFullName, logoSrc }: Si
 
       {/* Footer */}
       <div className="border-t border-zinc-900 p-2 space-y-0.5">
-        <Link
-          href="#"
-          title={collapsed ? "Settings" : undefined}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-white/5 transition-colors text-[13px]"
-        >
-          <Settings size={18} className="shrink-0" />
-          {!collapsed && <span className="font-medium">Settings</span>}
-        </Link>
+        {roleName === "SUPER_ADMIN" && (
+          <Link
+            href="/register"
+            title={collapsed ? "Add User" : undefined}
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-white/5 transition-colors text-[13px]"
+          >
+            <UserPlus size={18} className="shrink-0" />
+            {!collapsed && <span className="font-medium">Add User</span>}
+          </Link>
+        )}
 
         <button
           onClick={handleLogout}
@@ -140,13 +148,7 @@ export default function Sidebar({ hotelName = "HMS", userFullName, logoSrc }: Si
           {!collapsed && <span className="font-medium">Logout</span>}
         </button>
 
-        {/* Collapse toggle */}
-        <button
-          onClick={() => setCollapsed((c) => !c)}
-          className="w-full flex items-center justify-center py-1.5 rounded-lg text-zinc-700 hover:text-zinc-400 hover:bg-white/5 transition-colors"
-        >
-          {collapsed ? <ChevronRight size={13} /> : <ChevronLeft size={13} />}
-        </button>
+
       </div>
     </aside>
   );

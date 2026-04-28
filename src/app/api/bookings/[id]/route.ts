@@ -48,6 +48,7 @@ export async function GET(
           g.email,
           g.city,
           g.state,
+          g.country,
           g.zip_code         AS postal,
           g.notes
         FROM bookings b
@@ -99,7 +100,7 @@ export async function PUT(
     const body = await req.json();
     const {
       firstName, lastName, gender, idType, idNumber, age,
-      street1, street2, city, state, postal,
+      street1, street2, city, state, postal, country,
       countryCode, phone, email,
       checkIn, checkOut, timeH, timeM, ampm,
       roomType, adults, kids, rooms,
@@ -150,6 +151,7 @@ export async function PUT(
         .input("email", sql.NVarChar(200), email || null)
         .input("city", sql.NVarChar(100), city || null)
         .input("state", sql.NVarChar(100), state || null)
+        .input("country", sql.NVarChar(100), country || null)
         .input("zip_code", sql.NVarChar(20), postal || null)
         .input("notes", sql.NVarChar(2000), addressNotes)
         .query(`
@@ -157,7 +159,7 @@ export async function PUT(
             full_name = @full_name, first_name = @first_name, last_name = @last_name,
             gender = @gender, age = @age, id_type = @id_type, id_number = @id_number,
             phone = @phone, email = @email, city = @city, state = @state,
-            zip_code = @zip_code, notes = @notes
+            country = @country, zip_code = @zip_code, notes = @notes
           WHERE id = @id
         `);
     }

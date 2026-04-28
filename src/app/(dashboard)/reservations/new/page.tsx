@@ -74,7 +74,7 @@ export default function NewBookingPage() {
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
   const [postal, setPostal] = useState("");
-  const [country, setCountry] = useState("");
+  const [countryName, setCountryName] = useState("");
   const [countryCode, setCountryCode] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -105,21 +105,24 @@ export default function NewBookingPage() {
   const allCountries = useMemo(() => Country.getAllCountries(), []);
 
   const availableCities = useMemo(() => {
-    if (!country) return [];
-    const raw = City.getCitiesOfCountry(country) ?? [];
+    if (!countryName) return [];
+    const found = allCountries.find((c) => c.name === countryName);
+    if (!found) return [];
+    const raw = City.getCitiesOfCountry(found.isoCode) ?? [];
     return [...new Set(raw.map((c) => c.name))].sort();
-  }, [country]);
+  }, [countryName, allCountries]);
 
   function handleCountryChange(isoCode: string) {
-    setCountry(isoCode);
     setCity("");
     if (isoCode) {
       const found = allCountries.find((c) => c.isoCode === isoCode);
+      setCountryName(found?.name ?? isoCode);
       if (found?.phonecode) {
         const code = found.phonecode.split("-")[0].split(",")[0].trim();
         setCountryCode(`+${code}`);
       }
     } else {
+      setCountryName("");
       setCountryCode("");
     }
   }
@@ -173,7 +176,7 @@ export default function NewBookingPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           firstName, lastName, gender, idType, idNumber, age,
-          street1, street2, city, state, postal,
+          street1, street2, city, state, postal, country: countryName,
           countryCode, phone, email,
           checkIn, checkOut, timeH, timeM, ampm,
           roomType, adults, kids, rooms,
@@ -321,7 +324,7 @@ export default function NewBookingPage() {
             <label className={LABEL}>Country</label>
             <div className="relative">
               <SelectWrapper>
-                <select className={SELECT} value={country} onChange={(e) => handleCountryChange(e.target.value)}>
+                <select className={SELECT} value={allCountries.find(c => c.name === countryName)?.isoCode ?? ""} onChange={(e) => handleCountryChange(e.target.value)}>
                   <option value="">-- Select --</option>
                   {allCountries.map((c) => (
                     <option key={c.isoCode} value={c.isoCode}>
@@ -330,7 +333,7 @@ export default function NewBookingPage() {
                   ))}
                 </select>
               </SelectWrapper>
-              {country && (
+              {countryName && (
                 <button
                   type="button"
                   onClick={() => handleCountryChange("")}

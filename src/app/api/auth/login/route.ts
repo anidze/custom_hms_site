@@ -22,9 +22,11 @@ export async function POST(req: NextRequest) {
       .query(`
         SELECT u.id, u.email, u.password_hash, u.is_active,
                u.full_name, u.hotel_id, u.role_id,
-               h.name AS hotel_name
+               h.name AS hotel_name,
+               r.code AS role_name
         FROM users u
         LEFT JOIN hotels h ON h.id = u.hotel_id
+        LEFT JOIN user_role r ON r.id = u.role_id
         WHERE u.email = @email
       `);
 
@@ -49,6 +51,7 @@ export async function POST(req: NextRequest) {
       fullName: user.full_name,
       hotelId: user.hotel_id ?? 0,
       roleId: user.role_id,
+      roleName: user.role_name ?? "",
       hotelName: user.hotel_name ?? "HMS",
     });
 

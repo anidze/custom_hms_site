@@ -6,6 +6,7 @@ export interface SessionPayload {
   fullName: string;
   hotelId: number;
   roleId: number;
+  roleName: string;
   hotelName: string;
 }
 
