@@ -97,7 +97,7 @@ export default function RegisterForm() {
           </div>
 
           <button type="submit" disabled={isLoading || loadingHotels}
-            className="mt-2 w-full rounded-lg bg-orange-500 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-400/40 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="mt-2 w-full rounded-lg bg-[#0f1f38] py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#162d4e] focus:outline-none focus:ring-2 focus:ring-orange-400/40 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? "Processing..." : "Register"}
           </button>

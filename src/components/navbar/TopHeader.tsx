@@ -54,7 +54,7 @@ export default function TopHeader({ userFullName = "Admin", role = "Admin" }: To
           <p className="text-xs font-medium text-zinc-800 leading-tight">{userFullName}</p>
           <p className="text-[11px] text-zinc-400 leading-tight">{role}</p>
         </div>
-        <div className="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center text-white text-xs font-semibold shrink-0">
+        <div className="w-8 h-8 rounded-full bg-[#0f1f38] flex items-center justify-center text-white text-xs font-semibold shrink-0">
           {initials}
         </div>
       </div>

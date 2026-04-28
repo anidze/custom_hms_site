@@ -85,8 +85,8 @@ export default function RoomsClient({ rooms, hotelName }: RoomsClientProps) {
               onClick={() => setActiveFilter(f)}
               className={`px-5 py-2 rounded-lg text-sm font-semibold border transition-colors ${
                 activeFilter === f
-                  ? "bg-[#d56f4d] text-white border-[#d56f4d]"
-                  : "bg-white text-slate-700 border-slate-300 hover:border-[#d56f4d]"
+                  ? "bg-[#0f1f38] text-white border-[#0f1f38]"
+                  : "bg-white text-slate-700 border-slate-300 hover:border-[#0f1f38]"
               }`}
             >
               {f === "all" ? "All rooms" : f.charAt(0).toUpperCase() + f.slice(1)}
@@ -98,7 +98,7 @@ export default function RoomsClient({ rooms, hotelName }: RoomsClientProps) {
             <select
               value={selectedFloor}
               onChange={(e) => setSelectedFloor(e.target.value)}
-              className="appearance-none bg-white border border-slate-300 text-sm text-slate-700 font-semibold px-4 py-2 pr-8 rounded-lg cursor-pointer focus:outline-none focus:border-[#d56f4d]"
+              className="appearance-none bg-white border border-slate-300 text-sm text-slate-700 font-semibold px-4 py-2 pr-8 rounded-lg cursor-pointer focus:outline-none focus:border-[#0f1f38]"
             >
               <option value="all">Select Floor</option>
               {floors
@@ -153,14 +153,14 @@ export default function RoomsClient({ rooms, hotelName }: RoomsClientProps) {
         <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-slate-100">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-[#fdf0ec] text-slate-600 font-semibold">
+              <tr className="bg-[#0f1f38] text-white font-semibold">
                 <th className="text-left px-6 py-3">Room No</th>
                 <th className="text-left px-4 py-3">Type</th>
                 <th className="text-left px-4 py-3">Floor</th>
                 <th className="text-left px-4 py-3">Facilities / Notes</th>
                 <th className="text-left px-4 py-3">Price / Night</th>
                 <th className="text-left px-4 py-3">Status</th>
-                <th className="px-4 py-3" />
+                {/* <th className="px-4 py-3" /> */}
               </tr>
             </thead>
             <tbody>
@@ -190,11 +190,11 @@ export default function RoomsClient({ rooms, hotelName }: RoomsClientProps) {
                         {room.bookingStatus === "Available" ? "Available" : "Occupied"}
                       </span>
                     </td>
-                    <td className="px-4 py-4 text-right">
+                    {/* <td className="px-4 py-4 text-right">
                       <button className="text-slate-400 hover:text-slate-700 p-1 rounded transition-colors">
                         <MoreVertical className="w-5 h-5" />
                       </button>
-                    </td>
+                    </td> */}
                   </tr>
                 ))
               )}

@@ -52,7 +52,7 @@ export default function Sidebar({ hotelName = "HMS", userFullName, logoSrc, role
       onMouseEnter={() => setCollapsed(false)}
       className={`${
         collapsed ? "w-[68px]" : "w-60"
-      } bg-zinc-950 flex flex-col fixed h-full transition-[width] duration-200 ease-in-out z-20 border-r border-zinc-900`}
+      } bg-[#0f1f38] flex flex-col fixed h-full transition-[width] duration-200 ease-in-out z-20 border-r border-zinc-900`}
     >
       {/* Brand */}
       <div className="h-14 flex items-center shrink-0 border-b border-zinc-900 px-3 gap-2.5">
