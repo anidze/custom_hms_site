@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -34,8 +34,17 @@ const CELL_W = 44; // px per day
 const ROW_H  = 48; // px per room row
 const LEFT_W = 80; // px for room label column
 
+function daysInMonth(year: number, month: number) {
+  return new Date(year, month + 1, 0).getDate();
+}
+
+function getDayName(year: number, month: number, day: number): string {
+  const monBased = (new Date(year, month, day).getDay() + 6) % 7;
+  return DAY_NAMES[monBased];
+}
+
 export default function FrontdeskPage() {
-    const router = useRouter();
+  const router = useRouter();
   const now = new Date();
   const [year, setYear]               = useState(now.getFullYear());
   const [activeMonth, setActiveMonth] = useState(now.getMonth()); // 0-based
@@ -45,35 +54,33 @@ export default function FrontdeskPage() {
   const [loading, setLoading]         = useState(true);
 
   useEffect(() => {
-    setLoading(true);
-    fetch(`/api/frontdesk/bookings?year=${year}&month=${activeMonth + 1}`)
-      .then((r) => r.json())
-      .then((data) => {
+    const controller = new AbortController();
+
+    async function load() {
+      setLoading(true);
+      try {
+        const r    = await fetch(`/api/frontdesk/bookings?year=${year}&month=${activeMonth + 1}`, { signal: controller.signal });
+        const data = await r.json();
         setRooms(data.rooms    ?? []);
         setBookings(data.bookings ?? []);
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false));
+      } catch (err) {
+        if (!controller.signal.aborted) console.error(err);
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    }
+
+    load();
+    return () => controller.abort();
   }, [year, activeMonth]);
 
-  function daysInMonth() {
-    return new Date(year, activeMonth + 1, 0).getDate();
-  }
-
-  function getDayName(day: number): string {
-    // getDay(): 0=Sun,1=Mon,...6=Sat → convert to Mon-based (0=Mon,6=Sun)
-    const monBased = (new Date(year, activeMonth, day).getDay() + 6) % 7;
-    return DAY_NAMES[monBased];
-  }
-
-  const daysCount = daysInMonth();
-  const days      = Array.from({ length: daysCount }, (_, i) => i + 1);
-
-  // room id → row index
-  const roomIndex = new Map<number, number>(rooms.map((r, i) => [r.id, i]));
-
-  const filtered = bookings.filter(
-    (b) => search === "" || b.guest_name.toLowerCase().includes(search.toLowerCase())
+  const daysCount = useMemo(() => daysInMonth(year, activeMonth), [year, activeMonth]);
+  const days      = useMemo(() => Array.from({ length: daysCount }, (_, i) => i + 1), [daysCount]);
+  const roomIndex = useMemo(() => new Map<number, number>(rooms.map((r, i) => [r.id, i])), [rooms]);
+  const roomMap   = useMemo(() => new Map<number, ApiRoom>(rooms.map((r) => [r.id, r])), [rooms]);
+  const filtered  = useMemo(
+    () => search === "" ? bookings : bookings.filter((b) => b.guest_name.toLowerCase().includes(search.toLowerCase())),
+    [bookings, search]
   );
 
   function barProps(b: ApiBooking) {
@@ -101,7 +108,7 @@ export default function FrontdeskPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setYear((y) => y - 1)}
-            className="p-1 rounded border border-slate-200 hover:bg-slate-100"
+            className="p-1 rounded-lg border border-zinc-200 hover:bg-zinc-50 text-zinc-500 transition-colors"
           >
             <ChevronLeft size={14} />
           </button>
@@ -179,7 +186,7 @@ export default function FrontdeskPage() {
               <div className="flex border-b border-zinc-100 h-10">
                 {days.map((d) => (
                   <div key={d} className="text-center shrink-0 py-1" style={{ width: CELL_W }}>
-                    <div className="text-[9px] text-zinc-300">{getDayName(d)}</div>
+                    <div className="text-[9px] text-zinc-300">{getDayName(year, activeMonth, d)}</div>
                     <div className="text-[11px] font-medium text-zinc-500">{String(d).padStart(2, "0")}</div>
                   </div>
                 ))}
@@ -210,7 +217,7 @@ export default function FrontdeskPage() {
                 {/* Booking bars */}
                 {filtered.map((b) => {
                   const { left, width, top } = barProps(b);
-                  const roomLabel = rooms.find((r) => r.id === b.room_id)?.room_number ?? "";
+                      const roomLabel = roomMap.get(b.room_id)?.room_number ?? "";
                   return (
                     <div
                       key={b.id}

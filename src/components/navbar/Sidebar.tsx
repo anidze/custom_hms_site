@@ -72,7 +72,7 @@ export default function Sidebar({ hotelName = "HMS", userFullName, logoSrc, role
               {hotelName}
             </span>
             {userFullName && (
-              <span className="text-[11px] text-zinc-500 truncate leading-tight">
+              <span className="text-[11px] text-white truncate leading-tight">
                 {userFullName}
               </span>
             )}
@@ -112,7 +112,7 @@ export default function Sidebar({ hotelName = "HMS", userFullName, logoSrc, role
               title={collapsed ? label : undefined}
               className={`relative flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-[13px] ${
                 active
-                  ? "bg-white/[0.07] text-white"
+                  ? "bg-white/[0.07] text-white text-4xl font-semibold"
                   : "text-zinc-500 hover:text-zinc-200 hover:bg-white/5"
               }`}
             >

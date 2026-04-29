@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   Cell, PieChart, Pie,
@@ -15,31 +15,46 @@ interface DashboardStats {
   totalRooms:    number;
   availableRooms: number;
   occupiedRooms:  number;
-  monthlyOccupancy: { month: string; count: number; occupancy: number }[];
+  monthlyOccupancy: { month: string; count: number }[];
   paymentMethods:   { name: string; value: number; color: string }[];
 }
 
-// ─── placeholder kept so file compiles before data loads ──────────────────────
-const _statCards_placeholder = [
-  { label: "Check-In",  sub: "Today", value: "201", total: "650", color: "text-amber-500" },
-  { label: "Check-Out", sub: "Today", value: "432", total: "650", color: "text-sky-500" },
-  { label: "Bookings",  sub: "Today", value: "179", total: "650", color: "text-emerald-500" },
-  { label: "In-House",  sub: "Today", value: "78",  total: "650", color: "text-rose-500" },
-];
-
-void _statCards_placeholder;
+const CURRENT_YEAR = new Date().getFullYear();
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/dashboard/stats")
-      .then((r) => r.json())
-      .then((data) => setStats(data))
-      .catch(console.error)
-      .finally(() => setLoading(false));
+    const controller = new AbortController();
+
+    async function load() {
+      try {
+        const r    = await fetch("/api/dashboard/stats", { signal: controller.signal });
+        const data = await r.json();
+        setStats(data);
+      } catch (err) {
+        if (!controller.signal.aborted) console.error(err);
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    }
+
+    load();
+    return () => controller.abort();
   }, []);
+
+  const statCards = useMemo(() => !stats ? [] : [
+    { label: "Check-In",  sub: "Today", value: stats.checkInToday,  total: stats.totalRooms, color: "text-amber-500" },
+    { label: "Check-Out", sub: "Today", value: stats.checkOutToday, total: stats.totalRooms, color: "text-sky-500" },
+    { label: "Bookings",  sub: "Today", value: stats.bookingsToday, total: stats.totalRooms, color: "text-emerald-500" },
+    { label: "In-House",  sub: "Today", value: stats.inHouse,       total: stats.totalRooms, color: "text-rose-500" },
+  ], [stats]);
+
+  const roomStatusData = useMemo(() => !stats ? [] : [
+    { name: "Occupied",  value: stats.occupiedRooms,  color: "#60a5fa" },
+    { name: "Available", value: stats.availableRooms, color: "#4ade80" },
+  ], [stats]);
 
   if (loading) {
     return (
@@ -56,19 +71,6 @@ export default function DashboardPage() {
       </div>
     );
   }
-
-  const statCards = [
-    { label: "Check-In",  sub: "Today", value: stats.checkInToday,  total: stats.totalRooms, color: "text-amber-500" },
-    { label: "Check-Out", sub: "Today", value: stats.checkOutToday, total: stats.totalRooms, color: "text-sky-500" },
-    { label: "Bookings",  sub: "Today", value: stats.bookingsToday, total: stats.totalRooms, color: "text-emerald-500" },
-    { label: "In-House",  sub: "Today", value: stats.inHouse,       total: stats.totalRooms, color: "text-rose-500" },
-  ];
-
-  const roomStatusData = [
-    { name: "Occupied",  value: stats.occupiedRooms,  color: "#60a5fa" },
-    { name: "Available", value: stats.availableRooms, color: "#4ade80" },
-  ];
-  const roomTotal = stats.totalRooms || 1;
 
   return (
     <div className="space-y-5">
@@ -89,36 +91,29 @@ export default function DashboardPage() {
       {/* Room Status */}
       <div className="bg-white rounded-xl border border-zinc-100 p-5">
         <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-4">Room Status</p>
-        <div className="grid grid-cols-2 gap-6">
-          {["Occupied Rooms", "Available Rooms"].map((title) => (
-            <div key={title} className="flex items-center gap-5">
-              <div className="relative shrink-0">
-                <PieChart width={110} height={110}>
-                  <Pie data={roomStatusData} cx={50} cy={50} innerRadius={26} outerRadius={50}
-                    paddingAngle={2} dataKey="value" stroke="none">
-                    {roomStatusData.map((e) => <Cell key={e.name} fill={e.color} />)}
-                  </Pie>
-                </PieChart>
-                <span className="absolute inset-0 flex items-center justify-center text-xs font-semibold text-zinc-700">
-                  {roomTotal}
-                </span>
-              </div>
-              <div className="flex-1">
-                <p className="text-xs font-semibold text-zinc-700 mb-2">{title}</p>
-                <div className="space-y-1.5">
-                  {roomStatusData.map((d) => (
-                    <div key={d.name} className="flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full shrink-0" style={{ background: d.color }} />
-                        <span className="text-zinc-500">{d.name}</span>
-                      </div>
-                      <span className="font-medium text-zinc-700">{d.value}</span>
-                    </div>
-                  ))}
+        <div className="flex items-center gap-8">
+          <div className="relative shrink-0">
+            <PieChart width={110} height={110}>
+              <Pie data={roomStatusData} cx={50} cy={50} innerRadius={26} outerRadius={50}
+                paddingAngle={2} dataKey="value" stroke="none">
+                {roomStatusData.map((e) => <Cell key={e.name} fill={e.color} />)}
+              </Pie>
+            </PieChart>
+            <span className="absolute inset-0 flex items-center justify-center text-xs font-semibold text-zinc-700">
+              {stats.totalRooms}
+            </span>
+          </div>
+          <div className="flex-1 space-y-1.5">
+            {roomStatusData.map((d) => (
+              <div key={d.name} className="flex items-center justify-between text-xs">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full shrink-0" style={{ background: d.color }} />
+                  <span className="text-zinc-500">{d.name}</span>
                 </div>
+                <span className="font-medium text-zinc-700">{d.value}</span>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
 
@@ -129,7 +124,7 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between mb-4">
             <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Occupancy Statistic</p>
             <span className="text-[11px] text-zinc-400 border border-zinc-100 rounded-md px-2 py-0.5">
-              {new Date().getFullYear()} Monthly
+              {CURRENT_YEAR} Monthly
             </span>
           </div>
           <ResponsiveContainer width="100%" height={180}>

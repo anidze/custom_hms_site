@@ -1,9 +1,7 @@
-// Login form component
 "use client";
 
 import { useState, type FormEvent } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 interface LoginFormProps {
@@ -32,11 +30,14 @@ export default function LoginForm({
         body: JSON.stringify({ email, password }),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.error ?? "Login failed"); setIsLoading(false); return; }
+      if (!res.ok) {
+        setError(data.error ?? "Login failed");
+        return;
+      }
       router.push("/dashboard");
-      router.refresh();
     } catch {
       setError("Could not connect to server");
+    } finally {
       setIsLoading(false);
     }
   }
@@ -92,12 +93,6 @@ export default function LoginForm({
         </form>
       </div>
 
-      <p className="mt-5 text-center text-sm text-zinc-400">
-        Don&apos;t have an account?{" "}
-        <Link href="/register" className="font-medium text-orange-500 hover:text-orange-600 transition-colors">
-          Register
-        </Link>
-      </p>
     </div>
   );
 }
