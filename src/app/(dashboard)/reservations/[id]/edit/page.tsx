@@ -3,45 +3,40 @@
 import { useState, useEffect, useMemo } from "react";
 import { Country, City } from "country-state-city";
 import { useRouter, useParams } from "next/navigation";
-import { ChevronDown, X } from "lucide-react";
+import { ChevronDown, X, Plus, Trash2, User, Calendar, CreditCard, MessageSquare, MapPin, Users } from "lucide-react";
 
-function todayISO() {
-  return new Date().toISOString().split("T")[0];
+function todayISO() { return new Date().toISOString().split("T")[0]; }
+function calcNights(from: string, to: string) {
+  if (!from || !to) return 0;
+  return Math.max(0, Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86400000));
 }
 
-interface GuestRow {
-  firstName: string;
-  lastName: string;
-  gender: string;
-  age: string;
-}
+interface GuestRow { firstName: string; lastName: string; gender: string; age: string; }
 
-const INPUT =
-  "w-full bg-white border border-zinc-200 rounded-lg px-3.5 py-2.5 text-sm text-zinc-700 placeholder-zinc-400 outline-none focus:ring-2 focus:ring-[#c1604a]/30 focus:border-[#c1604a] transition";
-
-const INPUT_ERR =
-  "w-full bg-white border border-rose-400 rounded-lg px-3.5 py-2.5 text-sm text-zinc-700 placeholder-zinc-400 outline-none focus:ring-2 focus:ring-rose-400/30 transition";
-
-const SELECT =
-  "w-full bg-white border border-zinc-200 rounded-lg px-3.5 py-2.5 text-sm text-zinc-600 outline-none focus:ring-2 focus:ring-[#c1604a]/30 focus:border-[#c1604a] transition appearance-none";
-
-const SELECT_ERR =
-  "w-full bg-white border border-rose-400 rounded-lg px-3.5 py-2.5 text-sm text-zinc-600 outline-none focus:ring-2 focus:ring-rose-400/30 transition appearance-none";
-
-const LABEL = "block text-sm font-semibold text-zinc-700 mb-1.5";
-
-function Req() {
-  return <span className="text-rose-500 ml-0.5">*</span>;
-}
-
+const F = "w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-700 placeholder-slate-400 outline-none focus:ring-2 focus:ring-[#0f1f38]/15 focus:border-[#0f1f38] transition";
+const FE = "w-full bg-white border border-rose-400 rounded-xl px-3.5 py-2.5 text-sm text-slate-700 placeholder-slate-400 outline-none focus:ring-2 focus:ring-rose-400/30 transition";
+const S = "w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-600 outline-none focus:ring-2 focus:ring-[#0f1f38]/15 focus:border-[#0f1f38] transition appearance-none";
+const SE = "w-full bg-white border border-rose-400 rounded-xl px-3.5 py-2.5 text-sm text-slate-600 outline-none focus:ring-2 focus:ring-rose-400/30 transition appearance-none";
+const L = "block text-sm font-semibold text-slate-600 mb-1.5";
+function Req() { return <span className="text-rose-500 ml-0.5">*</span>; }
 const ID_TYPES = ["Passport", "Driving License", "National ID", "Other"];
 const PAYMENT_METHODS = ["Cheque", "Paypal", "Cash", "Credit Card"];
 
-function SelectWrapper({ children }: { children: React.ReactNode }) {
+function Sel({ children }: { children: React.ReactNode }) {
   return (
     <div className="relative">
       {children}
-      <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#0f1f38] pointer-events-none" />
+      <ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+    </div>
+  );
+}
+
+function SectionHeader({ icon: Icon, title }: { icon: React.ElementType; title: string }) {
+  return (
+    <div className="flex items-center gap-3 mb-5">
+      <div className="w-1 h-5 bg-[#c9a84c] rounded-full" />
+      <Icon size={16} className="text-[#0f1f38]" />
+      <h3 className="text-sm font-bold text-[#0f1f38] uppercase tracking-wider">{title}</h3>
     </div>
   );
 }
@@ -85,6 +80,8 @@ export default function EditBookingPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  const nights = calcNights(checkIn, checkOut);
 
   const allCountries = useMemo(() => Country.getAllCountries(), []);
 
@@ -233,59 +230,107 @@ export default function EditBookingPage() {
 
   if (loadingData) {
     return (
-      <div className="min-h-screen bg-[#fdf0eb] flex items-center justify-center">
-        <p className="text-zinc-400 text-sm">Loading...</p>
+      <div className="max-w-4xl mx-auto pb-10 flex items-center justify-center min-h-[40vh]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-6 h-6 border-2 border-[#0f1f38] border-t-transparent rounded-full animate-spin" />
+          <p className="text-slate-400 text-sm">Loading booking…</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#fdf0eb] flex justify-center py-10 px-4">
-      <form
-        onSubmit={handleSubmit}
-        className="w-full max-w-4xl bg-[#fdf0eb] rounded-2xl p-8 space-y-7"
-      >
-        <h1 className="text-center text-xl font-extrabold tracking-widest text-zinc-800 uppercase">
-          Edit Booking
-        </h1>
+    <div className="max-w-4xl mx-auto pb-10">
+      {/* Breadcrumb */}
+      <div className="mb-6 flex items-center gap-2 text-sm text-slate-400">
+        <button type="button" onClick={() => router.push("/reservations")} className="hover:text-[#0f1f38] transition-colors font-medium">
+          Reservations
+        </button>
+        <span>/</span>
+        <span className="text-slate-600 font-semibold">Edit Booking</span>
+      </div>
 
-        {/* Full Name + Gender */}
-        <div>
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-sm font-semibold text-zinc-700">Full Name<Req /></span>
-            <span className="text-sm font-semibold text-zinc-700">Gender</span>
+      <form onSubmit={handleSubmit} className="space-y-5">
+
+        {/* ── Booking Details ── */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+          <SectionHeader icon={Calendar} title="Booking Details" />
+          <div className="grid grid-cols-[1fr_1fr_auto] gap-4 items-end">
+            <div>
+              <label className={L}>Check-In Date<Req /></label>
+              <input type="date" className={fieldErrors.checkIn ? FE : F} value={checkIn} onChange={(e) => { setCheckIn(e.target.value); setFieldErrors((p) => ({ ...p, checkIn: "" })); }} />
+              {fieldErrors.checkIn && <p className="text-xs text-rose-500 mt-1">{fieldErrors.checkIn}</p>}
+            </div>
+            <div>
+              <label className={L}>Check-Out Date<Req /></label>
+              <input type="date" className={fieldErrors.checkOut ? FE : F} value={checkOut} min={checkIn || todayISO()} onChange={(e) => { setCheckOut(e.target.value); setFieldErrors((p) => ({ ...p, checkOut: "" })); }} />
+              {fieldErrors.checkOut && <p className="text-xs text-rose-500 mt-1">{fieldErrors.checkOut}</p>}
+            </div>
+            <div className="flex flex-col items-center justify-center bg-[#0f1f38] rounded-xl px-5 py-2.5 min-w-22">
+              <span className="text-2xl font-bold text-white leading-none">{nights || 0}</span>
+              <span className="text-[10px] text-white/60 font-semibold uppercase tracking-wider mt-0.5">{nights === 1 ? "Night" : "Nights"}</span>
+            </div>
           </div>
-          <div className="flex gap-4 items-start">
+          <div className="grid grid-cols-[1fr_auto] gap-4 items-end mt-4">
+            <div className="grid grid-cols-[1.5fr_1fr_1fr_1fr] gap-4">
+              <div>
+                <label className={L}>Room Type<Req /></label>
+                <Sel>
+                  <select className={fieldErrors.roomType ? SE : S} value={roomType} onChange={(e) => { setRoomType(e.target.value); setFieldErrors((p) => ({ ...p, roomType: "" })); }}>
+                    <option value="">-- Select --</option>
+                    {roomTypes.map((t) => <option key={t}>{t}</option>)}
+                  </select>
+                </Sel>
+                {fieldErrors.roomType && <p className="text-xs text-rose-500 mt-1">{fieldErrors.roomType}</p>}
+              </div>
+              <div>
+                <label className={L}>Adults</label>
+                <input className={F} value={adults} onChange={(e) => setAdults(e.target.value)} type="number" min={0} placeholder="1" />
+              </div>
+              <div>
+                <label className={L}>Kids</label>
+                <input className={F} value={kids} onChange={(e) => setKids(e.target.value)} type="number" min={0} placeholder="0" />
+              </div>
+              <div>
+                <label className={L}>Rooms</label>
+                <input className={F} value={rooms} onChange={(e) => setRooms(e.target.value)} type="number" min={1} placeholder="1" />
+              </div>
+            </div>
+            <div>
+              <label className={L}>Arrival Time</label>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center bg-white border border-slate-200 rounded-xl overflow-hidden">
+                  <input className="w-10 px-2 py-2.5 text-sm text-center outline-none text-slate-600" placeholder="HH" maxLength={2} value={timeH} onChange={(e) => setTimeH(e.target.value)} />
+                  <span className="text-slate-400 font-semibold">:</span>
+                  <input className="w-10 px-2 py-2.5 text-sm text-center outline-none text-slate-600" placeholder="MM" maxLength={2} value={timeM} onChange={(e) => setTimeM(e.target.value)} />
+                </div>
+                <Sel><select className={S} style={{ width: 72 }} value={ampm} onChange={(e) => setAmpm(e.target.value)}><option>AM</option><option>PM</option></select></Sel>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Primary Guest ── */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+          <SectionHeader icon={User} title="Primary Guest Information" />
+          <div className="flex gap-4 items-start mb-4">
             <div className="grid grid-cols-2 gap-3 flex-1">
               <div>
-                <input
-                  className={fieldErrors.firstName ? INPUT_ERR : INPUT}
-                  placeholder="First Name"
-                  value={firstName}
-                  onChange={(e) => { setFirstName(e.target.value); setFieldErrors((p) => ({ ...p, firstName: "" })); }}
-                />
+                <label className={L}>First Name<Req /></label>
+                <input className={fieldErrors.firstName ? FE : F} placeholder="First Name" value={firstName} onChange={(e) => { setFirstName(e.target.value); setFieldErrors((p) => ({ ...p, firstName: "" })); }} />
                 {fieldErrors.firstName && <p className="text-xs text-rose-500 mt-1">{fieldErrors.firstName}</p>}
               </div>
               <div>
-                <input
-                  className={fieldErrors.lastName ? INPUT_ERR : INPUT}
-                  placeholder="Last Name"
-                  value={lastName}
-                  onChange={(e) => { setLastName(e.target.value); setFieldErrors((p) => ({ ...p, lastName: "" })); }}
-                />
+                <label className={L}>Last Name<Req /></label>
+                <input className={fieldErrors.lastName ? FE : F} placeholder="Last Name" value={lastName} onChange={(e) => { setLastName(e.target.value); setFieldErrors((p) => ({ ...p, lastName: "" })); }} />
                 {fieldErrors.lastName && <p className="text-xs text-rose-500 mt-1">{fieldErrors.lastName}</p>}
               </div>
             </div>
-            <div className="shrink-0">
-              <div className="flex items-center gap-5 h-10">
+            <div className="shrink-0 pt-7">
+              <div className="flex items-center gap-5">
                 {(["male", "female"] as const).map((g) => (
-                  <label key={g} className="flex items-center gap-2 cursor-pointer text-sm text-zinc-700">
-                    <span
-                      onClick={() => setGender(g)}
-                      className={`w-4 h-4 rounded-full border-2 flex items-center justify-center cursor-pointer transition ${
-                        gender === g ? "border-[#0f1f38]" : "border-zinc-300"
-                      }`}
-                    >
+                  <label key={g} className="flex items-center gap-2 cursor-pointer text-sm text-slate-600">
+                    <span onClick={() => setGender(g)} className={`w-4 h-4 rounded-full border-2 flex items-center justify-center cursor-pointer transition ${gender === g ? "border-[#0f1f38]" : "border-slate-300"}`}>
                       {gender === g && <span className="w-2 h-2 rounded-full bg-[#0f1f38] block" />}
                     </span>
                     {g.charAt(0).toUpperCase() + g.slice(1)}
@@ -294,319 +339,172 @@ export default function EditBookingPage() {
               </div>
             </div>
           </div>
-        </div>
-
-        {/* ID Proof + ID Number + Age */}
-        <div className="grid grid-cols-[200px_1fr_100px] gap-4">
-          <div>
-            <label className={LABEL}>ID Proof</label>
-            <SelectWrapper>
-              <select className={SELECT} value={idType} onChange={(e) => setIdType(e.target.value)}>
+          <div className="grid grid-cols-[200px_1fr_100px] gap-4 mb-4">
+            <div>
+              <label className={L}>ID Proof</label>
+              <Sel><select className={S} value={idType} onChange={(e) => setIdType(e.target.value)}>
                 <option value="">Select ID Type</option>
                 {ID_TYPES.map((t) => <option key={t}>{t}</option>)}
-              </select>
-            </SelectWrapper>
-          </div>
-          <div>
-            <label className={LABEL}>ID Number</label>
-            <input className={INPUT} placeholder="Enter ID no here" value={idNumber} onChange={(e) => setIdNumber(e.target.value)} />
-          </div>
-          <div>
-            <label className={LABEL}>Age</label>
-            <input className={INPUT} value={age} onChange={(e) => setAge(e.target.value)} type="number" min={0} />
-          </div>
-        </div>
-
-        {/* Address */}
-        <div>
-          <label className={LABEL}>Address</label>
-          <div className="space-y-3">
-            <input className={INPUT} placeholder="Street Address line 1" value={street1} onChange={(e) => setStreet1(e.target.value)} />
-            <input className={INPUT} placeholder="Street Address line 2" value={street2} onChange={(e) => setStreet2(e.target.value)} />
-          </div>
-        </div>
-
-        {/* Country + City + State + Postal */}
-        <div className="grid grid-cols-4 gap-4">
-          <div>
-            <label className={LABEL}>Country</label>
-            <div className="relative">
-              <SelectWrapper>
-                <select className={SELECT} value={allCountries.find(c => c.name === countryName)?.isoCode ?? ""} onChange={(e) => handleCountryChange(e.target.value)}>
-                  <option value="">-- Select --</option>
-                  {allCountries.map((c) => (
-                    <option key={c.isoCode} value={c.isoCode}>
-                      {c.flag} {c.name}
-                    </option>
-                  ))}
-                </select>
-              </SelectWrapper>
-              {countryName && (
-                <button type="button" onClick={() => handleCountryChange("")}
-                  className="absolute right-8 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 z-10">
-                  <X size={13} />
-                </button>
-              )}
+              </select></Sel>
+            </div>
+            <div>
+              <label className={L}>ID Number</label>
+              <input className={F} placeholder="Enter ID number" value={idNumber} onChange={(e) => setIdNumber(e.target.value)} />
+            </div>
+            <div>
+              <label className={L}>Age</label>
+              <input className={F} value={age} onChange={(e) => setAge(e.target.value)} type="number" min={0} />
             </div>
           </div>
-          <div>
-            <label className={LABEL}>City</label>
-            <div className="relative">
-              {availableCities.length > 0 ? (
-                <SelectWrapper>
-                  <select className={SELECT} value={city} onChange={(e) => setCity(e.target.value)}>
+          <div className="mb-4">
+            <label className={L}><MapPin size={13} className="inline mr-1 -mt-0.5" />Address</label>
+            <div className="space-y-2.5">
+              <input className={F} placeholder="Street Address line 1" value={street1} onChange={(e) => setStreet1(e.target.value)} />
+              <input className={F} placeholder="Street Address line 2 (optional)" value={street2} onChange={(e) => setStreet2(e.target.value)} />
+            </div>
+          </div>
+          <div className="grid grid-cols-4 gap-4 mb-4">
+            <div>
+              <label className={L}>Country</label>
+              <div className="relative">
+                <Sel>
+                  <select className={S} value={allCountries.find((c) => c.name === countryName)?.isoCode ?? ""} onChange={(e) => handleCountryChange(e.target.value)}>
                     <option value="">-- Select --</option>
-                    {availableCities.map((c) => <option key={c}>{c}</option>)}
+                    {allCountries.map((c) => (
+                      <option key={c.isoCode} value={c.isoCode}>{c.flag} {c.name}</option>
+                    ))}
                   </select>
-                </SelectWrapper>
-              ) : (
-                <input className={INPUT} placeholder="City" value={city} onChange={(e) => setCity(e.target.value)} />
-              )}
-              {city && (
-                <button type="button" onClick={() => setCity("")}
-                  className="absolute right-8 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 z-10">
-                  <X size={13} />
-                </button>
-              )}
-            </div>
-          </div>
-          <div>
-            <label className={LABEL}>State, Province</label>
-            <input className={INPUT} placeholder="State" value={state} onChange={(e) => setState(e.target.value)} />
-          </div>
-          <div>
-            <label className={LABEL}>Postal/Zipcode</label>
-            <input className={INPUT} placeholder="123456" value={postal} onChange={(e) => setPostal(e.target.value)} />
-          </div>
-        </div>
-
-        {/* Phone + Email */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className={LABEL}>Phone No</label>
-            <div className="flex gap-2">
-              <SelectWrapper>
-                <select
-                  className="w-24 bg-[#0f1f38] text-white border-none rounded-lg px-2 py-2.5 text-sm font-medium outline-none appearance-none pr-6 cursor-pointer"
-                  value={countryCode}
-                  onChange={(e) => setCountryCode(e.target.value)}
-                >
-                  <option value="">+</option>
-                  {allCountries.map((c) => {
-                    const code = c.phonecode.split("-")[0].split(",")[0].trim();
-                    return (
-                      <option key={c.isoCode} value={`+${code}`}>
-                        {c.flag} +{code}
-                      </option>
-                    );
-                  })}
-                </select>
-              </SelectWrapper>
-              <div className="relative flex-1">
-                <input
-                  className={INPUT}
-                  placeholder="Contact number"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  type="tel"
-                />
-                {phone && (
-                  <button type="button" onClick={() => setPhone("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600">
+                </Sel>
+                {countryName && (
+                  <button type="button" onClick={() => handleCountryChange("")} className="absolute right-8 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 z-10">
                     <X size={13} />
                   </button>
                 )}
               </div>
             </div>
-          </div>
-          <div>
-            <label className={LABEL}>Email</label>
-            <input className={INPUT} placeholder="Email address" value={email} onChange={(e) => setEmail(e.target.value)} type="email" />
-          </div>
-        </div>
-
-        {/* Check-In + Check-Out + Time */}
-        <div className="grid grid-cols-[1fr_1fr_auto] gap-4 items-end">
-          <div>
-            <label className={LABEL}>Check-In Date<Req /></label>
-            <input
-              type="date"
-              className={fieldErrors.checkIn ? INPUT_ERR : INPUT}
-              value={checkIn}
-              onChange={(e) => { setCheckIn(e.target.value); setFieldErrors((p) => ({ ...p, checkIn: "" })); }}
-            />
-            {fieldErrors.checkIn && <p className="text-xs text-rose-500 mt-1">{fieldErrors.checkIn}</p>}
-          </div>
-          <div>
-            <label className={LABEL}>Check-Out Date<Req /></label>
-            <input
-              type="date"
-              className={fieldErrors.checkOut ? INPUT_ERR : INPUT}
-              value={checkOut}
-              min={checkIn || todayISO()}
-              onChange={(e) => { setCheckOut(e.target.value); setFieldErrors((p) => ({ ...p, checkOut: "" })); }}
-            />
-            {fieldErrors.checkOut && <p className="text-xs text-rose-500 mt-1">{fieldErrors.checkOut}</p>}
-          </div>
-          <div>
-            <label className={LABEL}>Time</label>
-            <div className="flex items-center gap-2">
-              <div className="flex items-center bg-white border border-zinc-200 rounded-lg overflow-hidden">
-                <input
-                  className="w-10 px-2 py-2.5 text-sm text-center outline-none text-zinc-600"
-                  placeholder="HH" maxLength={2}
-                  value={timeH} onChange={(e) => setTimeH(e.target.value)}
-                />
-                <span className="text-zinc-400 font-semibold">:</span>
-                <input
-                  className="w-10 px-2 py-2.5 text-sm text-center outline-none text-zinc-600"
-                  placeholder="MM" maxLength={2}
-                  value={timeM} onChange={(e) => setTimeM(e.target.value)}
-                />
+            <div>
+              <label className={L}>City</label>
+              <div className="relative">
+                {availableCities.length > 0 ? (
+                  <Sel>
+                    <select className={S} value={city} onChange={(e) => setCity(e.target.value)}>
+                      <option value="">-- Select --</option>
+                      {availableCities.map((c) => <option key={c}>{c}</option>)}
+                    </select>
+                  </Sel>
+                ) : (
+                  <input className={F} placeholder="City" value={city} onChange={(e) => setCity(e.target.value)} />
+                )}
+                {city && (
+                  <button type="button" onClick={() => setCity("")} className="absolute right-8 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 z-10">
+                    <X size={13} />
+                  </button>
+                )}
               </div>
-              <SelectWrapper>
-                <select className={SELECT} style={{ width: 80 }} value={ampm} onChange={(e) => setAmpm(e.target.value)}>
-                  <option>AM</option>
-                  <option>PM</option>
-                </select>
-              </SelectWrapper>
+            </div>
+            <div>
+              <label className={L}>State / Province</label>
+              <input className={F} placeholder="State" value={state} onChange={(e) => setState(e.target.value)} />
+            </div>
+            <div>
+              <label className={L}>Postal / Zip</label>
+              <input className={F} placeholder="123456" value={postal} onChange={(e) => setPostal(e.target.value)} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={L}>Phone No</label>
+              <div className="flex gap-2">
+                <Sel>
+                  <select className="w-24 bg-[#0f1f38] text-white border-none rounded-xl px-2 py-2.5 text-sm font-medium outline-none appearance-none pr-6 cursor-pointer" value={countryCode} onChange={(e) => setCountryCode(e.target.value)}>
+                    <option value="">+</option>
+                    {allCountries.map((c) => {
+                      const code = c.phonecode.split("-")[0].split(",")[0].trim();
+                      return <option key={c.isoCode} value={`+${code}`}>{c.flag} +{code}</option>;
+                    })}
+                  </select>
+                </Sel>
+                <div className="relative flex-1">
+                  <input className={F} placeholder="Contact number" value={phone} onChange={(e) => setPhone(e.target.value)} type="tel" />
+                  {phone && <button type="button" onClick={() => setPhone("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"><X size={13} /></button>}
+                </div>
+              </div>
+            </div>
+            <div>
+              <label className={L}>Email</label>
+              <input className={F} placeholder="guest@email.com" value={email} onChange={(e) => setEmail(e.target.value)} type="email" />
             </div>
           </div>
         </div>
 
-        {/* Room Type + Adults + Kids + Rooms */}
-        <div className="grid grid-cols-[1.5fr_1fr_1fr_1fr] gap-4">
-          <div>
-            <label className={LABEL}>Room Type<Req /></label>
-            <SelectWrapper>
-              <select
-                className={fieldErrors.roomType ? SELECT_ERR : SELECT}
-                value={roomType}
-                onChange={(e) => { setRoomType(e.target.value); setFieldErrors((p) => ({ ...p, roomType: "" })); }}
-              >
-                <option value="">-- Select --</option>
-                {roomTypes.map((t) => <option key={t}>{t}</option>)}
-              </select>
-            </SelectWrapper>
-            {fieldErrors.roomType && <p className="text-xs text-rose-500 mt-1">{fieldErrors.roomType}</p>}
-          </div>
-          <div>
-            <label className={LABEL}>No of Adults</label>
-            <input className={INPUT} value={adults} onChange={(e) => setAdults(e.target.value)} type="number" min={0} />
-          </div>
-          <div>
-            <label className={LABEL}>No of Kids</label>
-            <input className={INPUT} value={kids} onChange={(e) => setKids(e.target.value)} type="number" min={0} />
-          </div>
-          <div>
-            <label className={LABEL}>No of Rooms</label>
-            <input className={INPUT} value={rooms} onChange={(e) => setRooms(e.target.value)} type="number" min={1} />
-          </div>
-        </div>
-
-        {/* Guest Details */}
-        <div>
-          <label className={LABEL}>Enter Guest Details:</label>
-          <div className="space-y-3">
-            {guests.map((g, idx) => (
-              <div key={idx} className="grid grid-cols-[1fr_1fr_160px_100px_auto] gap-3 items-end">
-                <div>
-                  {idx === 0 && <label className="block text-xs text-zinc-500 mb-1.5">Full Name</label>}
-                  <input className={INPUT} placeholder="First Name" value={g.firstName} onChange={(e) => updateGuest(idx, "firstName", e.target.value)} />
-                </div>
-                <div>
-                  {idx === 0 && <label className="block text-xs text-zinc-500 mb-1.5">&nbsp;</label>}
-                  <input className={INPUT} placeholder="Last Name" value={g.lastName} onChange={(e) => updateGuest(idx, "lastName", e.target.value)} />
-                </div>
-                <div>
-                  {idx === 0 && <label className="block text-xs text-zinc-500 mb-1.5">Gender</label>}
-                  <SelectWrapper>
-                    <select className={SELECT} value={g.gender} onChange={(e) => updateGuest(idx, "gender", e.target.value)}>
-                      <option value=""></option>
-                      <option value="Male">Male</option>
-                      <option value="Female">Female</option>
-                    </select>
-                  </SelectWrapper>
-                </div>
-                <div>
-                  {idx === 0 && <label className="block text-xs text-zinc-500 mb-1.5">Age</label>}
-                  <input className={INPUT} type="number" min={0} value={g.age} onChange={(e) => updateGuest(idx, "age", e.target.value)} />
-                </div>
-                <div>
-                  {idx === 0 && <div className="mb-1.5 h-4" />}
-                  {idx > 0 ? (
-                    <button
-                      type="button"
-                      onClick={() => removeGuest(idx)}
-                      className="flex items-center justify-center w-8 h-10 rounded-lg text-rose-400 hover:text-rose-600 hover:bg-rose-50 transition"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zm-1 7a1 1 0 012 0v4a1 1 0 01-2 0V9zm4 0a1 1 0 012 0v4a1 1 0 01-2 0V9z" clipRule="evenodd" />
-                      </svg>
-                    </button>
-                  ) : <div className="w-8" />}
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="flex justify-end mt-2">
-            <button
-              type="button"
-              onClick={addGuest}
-              className="px-5 py-2 rounded-lg bg-[#0f1f38] text-white text-sm font-semibold hover:bg-[#0d1a33] transition-colors"
-            >
-              + Add More
+        {/* ── Additional Guests ── */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-3">
+              <div className="w-1 h-5 bg-[#c9a84c] rounded-full" />
+              <Users size={16} className="text-[#0f1f38]" />
+              <h3 className="text-sm font-bold text-[#0f1f38] uppercase tracking-wider">Additional Guests</h3>
+            </div>
+            <button type="button" onClick={addGuest} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#0f1f38] text-white text-xs font-semibold hover:bg-[#1a3152] transition-colors">
+              <Plus size={13} /> Add Guest
             </button>
           </div>
+          {guests.length === 0 ? (
+            <p className="text-sm text-slate-400 text-center py-6">No additional guests. Click &ldquo;Add Guest&rdquo; to add more.</p>
+          ) : (
+            <div className="space-y-3">
+              {guests.map((g, idx) => (
+                <div key={idx} className="flex items-center gap-3 p-4 rounded-xl bg-slate-50 border border-slate-200">
+                  <div className="w-7 h-7 rounded-full bg-[#0f1f38]/10 text-[#0f1f38] flex items-center justify-center text-xs font-bold shrink-0">{idx + 1}</div>
+                  <div className="grid grid-cols-[1fr_1fr_140px_80px] gap-3 flex-1">
+                    <input className={F} placeholder="First Name" value={g.firstName} onChange={(e) => updateGuest(idx, "firstName", e.target.value)} />
+                    <input className={F} placeholder="Last Name" value={g.lastName} onChange={(e) => updateGuest(idx, "lastName", e.target.value)} />
+                    <Sel>
+                      <select className={S} value={g.gender} onChange={(e) => updateGuest(idx, "gender", e.target.value)}>
+                        <option value="">Gender</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                      </select>
+                    </Sel>
+                    <input className={F} type="number" min={0} placeholder="Age" value={g.age} onChange={(e) => updateGuest(idx, "age", e.target.value)} />
+                  </div>
+                  <button type="button" onClick={() => removeGuest(idx)} className="p-2 rounded-lg text-rose-400 hover:text-rose-600 hover:bg-rose-50 transition"><Trash2 size={14} /></button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* Payment Method */}
-        <div>
-          <label className={LABEL}>Payment Method</label>
-          <div className="flex items-center gap-6">
-            {PAYMENT_METHODS.map((m) => (
-              <label key={m} className="flex items-center gap-2 cursor-pointer text-sm text-zinc-700">
-                <span
-                  onClick={() => setPayment(m)}
-                  className={`w-4 h-4 rounded-full border-2 flex items-center justify-center cursor-pointer transition ${
-                    payment === m ? "border-[#0f1f38]" : "border-zinc-300"
-                  }`}
-                >
-                  {payment === m && <span className="w-2 h-2 rounded-full bg-[#0f1f38] block" />}
-                </span>
-                {m}
-              </label>
-            ))}
+        {/* ── Payment & Notes ── */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+          <SectionHeader icon={CreditCard} title="Payment & Notes" />
+          <div className="mb-5">
+            <label className={L}>Payment Method</label>
+            <div className="flex items-center gap-6 flex-wrap">
+              {PAYMENT_METHODS.map((m) => (
+                <label key={m} className="flex items-center gap-2 cursor-pointer text-sm text-slate-600">
+                  <span onClick={() => setPayment(m)} className={`w-4 h-4 rounded-full border-2 flex items-center justify-center cursor-pointer transition ${payment === m ? "border-[#0f1f38]" : "border-slate-300"}`}>
+                    {payment === m && <span className="w-2 h-2 rounded-full bg-[#0f1f38] block" />}
+                  </span>
+                  {m}
+                </label>
+              ))}
+            </div>
           </div>
-        </div>
-
-        {/* Special Request */}
-        <div>
-          <label className={LABEL}>Do you have any special request?</label>
-          <textarea
-            className={`${INPUT} resize-none h-32`}
-            placeholder="Type here...."
-            value={specialRequest}
-            onChange={(e) => setSpecialRequest(e.target.value)}
-          />
+          <div>
+            <label className={L}><MessageSquare size={13} className="inline mr-1 -mt-0.5" />Special Request</label>
+            <textarea className={`${F} resize-none h-28`} placeholder="Any special requests or notes..." value={specialRequest} onChange={(e) => setSpecialRequest(e.target.value)} />
+          </div>
         </div>
 
         {/* Actions */}
-        {error && <p className="text-sm text-rose-500 text-center -mb-3">{error}</p>}
-        <div className="flex items-center justify-between pt-2">
-          <button
-            type="button"
-            onClick={() => router.push("/reservations")}
-            className="px-6 py-2.5 rounded-lg border border-zinc-300 text-sm font-semibold text-zinc-700 bg-white hover:bg-zinc-50 transition-colors"
-          >
-            Close
+        {error && <p className="text-sm text-rose-500 text-center bg-rose-50 rounded-xl py-3 border border-rose-200 px-4">{error}</p>}
+        <div className="flex items-center justify-between pt-1">
+          <button type="button" onClick={() => router.push("/reservations")} className="px-6 py-2.5 rounded-xl border border-slate-300 text-sm font-semibold text-slate-600 bg-white hover:bg-slate-50 transition-colors">
+            Cancel
           </button>
-          <button
-            type="submit"
-            disabled={submitting}
-            className="px-8 py-2.5 rounded-lg bg-[#0f1f38] text-white text-sm font-semibold hover:bg-[#0d1a33] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            {submitting ? "Saving..." : "Save Changes"}
+          <button type="submit" disabled={submitting} className="px-8 py-2.5 rounded-xl bg-[#0f1f38] text-white text-sm font-semibold hover:bg-[#1a3152] transition-colors disabled:opacity-60 disabled:cursor-not-allowed shadow-sm">
+            {submitting ? "Saving…" : "Save Changes"}
           </button>
         </div>
       </form>

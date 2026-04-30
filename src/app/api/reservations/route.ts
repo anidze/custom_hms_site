@@ -42,7 +42,10 @@ export async function GET(req: NextRequest) {
           b.total_price                                                   AS totalPrice,
           ISNULL((SELECT SUM(p.amount) FROM payments p WHERE p.booking_id = b.id), 0) AS paidAmount,
           FORMAT(b.check_in,  'dd-MM-yyyy')                               AS checkIn,
-          FORMAT(b.check_out, 'dd-MM-yyyy')                               AS checkOut
+          FORMAT(b.check_out, 'dd-MM-yyyy')                               AS checkOut,
+          CONVERT(varchar(10), b.check_in,  120)                          AS checkInISO,
+          CONVERT(varchar(10), b.check_out, 120)                          AS checkOutISO,
+          DATEDIFF(day, b.check_in, b.check_out)                          AS nights
         FROM bookings b
         JOIN guests g         ON g.id  = b.guest_id
         JOIN booking_status bs ON bs.id = b.status_id
