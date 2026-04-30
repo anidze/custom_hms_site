@@ -12,9 +12,8 @@ import {
   Users,
   CalendarCheck,
   TrendingDown,
-  ChevronDown,
   AlertCircle,
-  CheckCircle2,
+  Calendar,
 } from "lucide-react";
 
 interface BookingRow {
@@ -38,15 +37,12 @@ interface BookingRow {
 function todayISO() {
   return new Date().toISOString().split("T")[0];
 }
-function tomorrowISO() {
+function yesterdayISO() {
   const d = new Date();
-  d.setDate(d.getDate() + 1);
+  d.setDate(d.getDate() - 1);
   return d.toISOString().split("T")[0];
 }
-function calcNights(from: string, to: string) {
-  if (!from || !to) return 0;
-  return Math.max(0, Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86400000));
-}
+
 
 const FIELD =
   "w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-700 placeholder-slate-400 outline-none focus:ring-2 focus:ring-[#0f1f38]/15 focus:border-[#0f1f38] transition bg-white";
@@ -54,22 +50,16 @@ const FIELD =
 export default function ReservationsPage() {
   const router = useRouter();
 
-  // ── Quick form ────────────────────────────────────────────────────────────
-  const [qFullName, setQFullName] = useState("");
-  const [qCheckIn, setQCheckIn] = useState(() => todayISO());
-  const [qCheckOut, setQCheckOut] = useState(() => tomorrowISO());
-  const [qRoomType, setQRoomType] = useState("");
-  const [qSubmitting, setQSubmitting] = useState(false);
-  const [qError, setQError] = useState<string | null>(null);
-
   // ── List ──────────────────────────────────────────────────────────────────
-  const [activeTab, setActiveTab] = useState<"all" | "reservations" | "checkin" | "checkout">("all");
+  const [activeTab, setActiveTab] = useState<"reservations" | "checkin" | "checkout">("reservations");
   const [search, setSearch] = useState("");
   const [rows, setRows] = useState<BookingRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
-  const [roomTypes, setRoomTypes] = useState<string[]>([]);
   const [actionLoading, setActionLoading] = useState<Record<number, "checkin" | "checkout" | undefined>>({});
+  const [dateMode, setDateMode] = useState< "today" | "yesterday" | "custom">("today");
+  const [customDate, setCustomDate] = useState(() => todayISO());
+  const [userRole, setUserRole] = useState("");
 
   const today = todayISO();
 
@@ -90,42 +80,14 @@ export default function ReservationsPage() {
 
   useEffect(() => {
     fetchData();
-    fetch("/api/rooms")
-      .then((r) => r.json())
-      .then((data: { room_type_name: string }[]) => {
-        const unique = [...new Set(data.map((r) => r.room_type_name).filter(Boolean))];
-        setRoomTypes(unique);
-        if (unique.length > 0) setQRoomType(unique[0]);
-      })
-      .catch(() => {});
   }, [fetchData]);
 
-  // ── Quick create ──────────────────────────────────────────────────────────
-  async function handleQuickCreate(e: React.FormEvent) {
-    e.preventDefault();
-    if (!qFullName.trim()) { setQError("Full name is required"); return; }
-    if (!qCheckIn || !qCheckOut) { setQError("Both dates are required"); return; }
-    if (qCheckOut <= qCheckIn) { setQError("Check-out must be after check-in"); return; }
-    setQError(null);
-    setQSubmitting(true);
-    const parts = qFullName.trim().split(/\s+/);
-    const firstName = parts[0];
-    const lastName = parts.slice(1).join(" ") || parts[0];
-    try {
-      const res = await fetch("/api/bookings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ firstName, lastName, checkIn: qCheckIn, checkOut: qCheckOut, roomType: qRoomType, adults: "1", kids: "0", rooms: "1", payment: "Cash", guests: [] }),
-      });
-      const data = await res.json();
-      if (!res.ok) { setQError(data.error ?? "Failed to create"); return; }
-      router.push(`/reservations/${data.bookingId}/edit`);
-    } catch {
-      setQError("Network error");
-    } finally {
-      setQSubmitting(false);
-    }
-  }
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((d) => { if (d.roleName) setUserRole(d.roleName); })
+      .catch(() => {});
+  }, []);
 
   // ── Check-In / Check-Out ──────────────────────────────────────────────────
   async function handleCheckIn(id: number) {
@@ -159,9 +121,16 @@ export default function ReservationsPage() {
   // ── Filtered rows ─────────────────────────────────────────────────────────
   const filteredRows = useMemo(() => {
     let data = rows;
+    // Date filter
+    if (dateMode !== "all") {
+      const sel = dateMode === "today" ? today : dateMode === "yesterday" ? yesterdayISO() : customDate;
+      if (sel) data = data.filter((r) => r.checkInISO <= sel && r.checkOutISO >= sel);
+    }
+    // Tab filter
     if (activeTab === "reservations") data = data.filter((r) => isPending(r.bookingStatus));
     else if (activeTab === "checkin") data = data.filter((r) => r.checkInISO === today && isPending(r.bookingStatus));
     else if (activeTab === "checkout") data = data.filter((r) => isIn(r.bookingStatus));
+    // Search
     if (search.trim()) {
       const q = search.toLowerCase();
       data = data.filter((r) =>
@@ -172,7 +141,7 @@ export default function ReservationsPage() {
     }
     return data;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows, activeTab, search, today]);
+  }, [rows, activeTab, search, today, dateMode, customDate]);
 
   // ── Stats ─────────────────────────────────────────────────────────────────
   const stats = useMemo(() => ({
@@ -183,7 +152,8 @@ export default function ReservationsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [rows, today]);
 
-  const qNights = calcNights(qCheckIn, qCheckOut);
+  const qNights = 0; // kept for commented-out quick form
+  void qNights;
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -205,7 +175,7 @@ export default function ReservationsPage() {
       </div>
 
       {/* ── Quick Reservation ─────────────────────────────────────────────── */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      {/* <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="flex items-center gap-3 px-6 py-4 bg-linear-to-r from-[#0f1f38] to-[#1e3a5f]">
           <BedDouble size={17} className="text-[#c9a84c] shrink-0" />
           <h2 className="text-sm font-bold text-white tracking-wide">Quick Reservation</h2>
@@ -283,6 +253,33 @@ export default function ReservationsPage() {
             </p>
           )}
         </form>
+      </div> */}
+
+      {/* ── Date Filter ───────────────────────────────────────────────────── */}
+      <div className="flex items-center gap-2 bg-white rounded-2xl border border-slate-200 shadow-sm px-5 py-3.5 flex-wrap">
+        <Calendar size={15} className="text-[#c9a84c] shrink-0" />
+        <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mr-1">Show for:</span>
+        {([ "today", "yesterday", "custom"] as const).map((m) => (
+          <button
+            key={m}
+            onClick={() => setDateMode(m)}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+              dateMode === m
+                ? "bg-[#0f1f38] text-white shadow-sm"
+                : "text-slate-500 hover:text-slate-700 hover:bg-slate-50 border border-slate-200"
+            }`}
+          >
+            { m === "today" ? "Today" : m === "yesterday" ? "Yesterday" : "Specific Date"}
+          </button>
+        ))}
+        {dateMode === "custom" && (
+          <input
+            type="date"
+            value={customDate}
+            onChange={(e) => setCustomDate(e.target.value)}
+            className={`${FIELD} w-40 ml-1`}
+          />
+        )}
       </div>
 
       {/* ── Stats ─────────────────────────────────────────────────────────── */}
@@ -308,7 +305,7 @@ export default function ReservationsPage() {
       {/* ── Tabs + Search ─────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex gap-1 bg-white border border-slate-200 rounded-xl p-1 shadow-sm">
-          {(["all", "reservations", "checkin", "checkout"] as const).map((key) => (
+          {([ "reservations", "checkin", "checkout"] as const).map((key) => (
             <button
               key={key}
               onClick={() => setActiveTab(key)}
@@ -318,7 +315,7 @@ export default function ReservationsPage() {
                   : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
               }`}
             >
-              {key === "all" ? "All" : key === "reservations" ? "Reservations" : key === "checkin" ? "Check-In" : "Check-Out"}
+              {key === "reservations" ? "Reservations" : key === "checkin" ? "Check-In" : "Check-Out"}
             </button>
           ))}
         </div>
@@ -337,13 +334,11 @@ export default function ReservationsPage() {
       {/* ── Table ─────────────────────────────────────────────────────────── */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         {/* Header row */}
-        <div className="grid grid-cols-[2fr_1fr_80px_1fr_1fr_52px_1fr_1.2fr_164px] text-[11px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-100 px-5 py-3">
+        <div className="grid grid-cols-7 text-[11px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-100 px-5 py-3">
           <div>Guest</div>
-          <div>Booking #</div>
           <div>Room</div>
           <div>Type</div>
           <div>Check-In</div>
-          <div>Nts</div>
           <div>Check-Out</div>
           <div>Status</div>
           <div className="text-right">Actions</div>
@@ -384,12 +379,12 @@ export default function ReservationsPage() {
             return (
               <div
                 key={r.id}
-                className={`grid grid-cols-[2fr_1fr_80px_1fr_1fr_52px_1fr_1.2fr_164px] items-center px-5 py-3.5 border-b border-slate-50 text-sm hover:bg-slate-50/60 transition-colors ${
+                className={`grid grid-cols-7 items-center px-5 py-3.5 border-b border-slate-50 text-sm hover:bg-slate-50/60 transition-colors ${
                   idx % 2 === 0 ? "bg-white" : "bg-slate-50/20"
                 }`}
               >
                 {/* Guest */}
-                <div className="min-w-0">
+                <div className="min-w-0 pr-2">
                   <p className="font-semibold text-slate-800 truncate">{r.guestName}</p>
                   <p className="text-xs mt-0.5">
                     {isPaid
@@ -397,9 +392,6 @@ export default function ReservationsPage() {
                       : <span className="text-amber-600 font-medium">Due {due.toFixed(2)}$</span>}
                   </p>
                 </div>
-
-                {/* Booking # */}
-                <div className="font-mono text-[12px] font-bold text-[#0f1f38]">{r.bookingNo}</div>
 
                 {/* Room */}
                 <div>
@@ -409,43 +401,44 @@ export default function ReservationsPage() {
                 </div>
 
                 {/* Type */}
-                <div className="text-slate-500 text-xs truncate">{r.roomType !== "-" ? r.roomType : "—"}</div>
+                <div className="text-slate-500 text-xs truncate pr-1">{r.roomType !== "-" ? r.roomType : "—"}</div>
 
                 {/* Check-In date */}
                 <div className="text-slate-600 text-xs font-medium">{r.checkIn}</div>
-
-                {/* Nights */}
-                <div>
-                  <span className="bg-slate-100 text-slate-600 text-[11px] font-semibold px-2 py-0.5 rounded-md">
-                    {r.nights ?? 0}n
-                  </span>
-                </div>
 
                 {/* Check-Out date */}
                 <div className="text-slate-600 text-xs font-medium">{r.checkOut}</div>
 
                 {/* Status badge */}
                 <div>
-                  <span
-                    className="text-[11px] font-semibold px-2.5 py-1 rounded-full inline-block"
-                    style={{
-                      color: r.statusColor ?? "#64748b",
-                      backgroundColor: r.statusColor ? `${r.statusColor}1a` : "#f1f5f9",
-                    }}
-                  >
-                    {r.bookingStatus}
-                  </span>
+                  {checkedOut ? (
+                    <span className="text-[11px] font-semibold px-2.5 py-1 rounded-full inline-block text-rose-600 bg-rose-50">
+                      Checked Out
+                    </span>
+                  ) : (
+                    <span
+                      className="text-[11px] font-semibold px-2.5 py-1 rounded-full inline-block"
+                      style={{
+                        color: r.statusColor ?? "#64748b",
+                        backgroundColor: r.statusColor ? `${r.statusColor}1a` : "#f1f5f9",
+                      }}
+                    >
+                      {r.bookingStatus}
+                    </span>
+                  )}
                 </div>
 
                 {/* Actions */}
                 <div className="flex items-center gap-1.5 justify-end">
-                  <button
-                    onClick={() => router.push(`/reservations/${r.id}/edit`)}
-                    title="Edit"
-                    className="p-1.5 rounded-lg border border-slate-200 text-slate-400 hover:text-[#0f1f38] hover:border-[#0f1f38] transition-colors"
-                  >
-                    <Pencil size={12} />
-                  </button>
+                  {(!checkedOut || userRole === "SUPER_ADMIN" || userRole === "HOTEL_ADMIN") && (
+                    <button
+                      onClick={() => router.push(`/reservations/${r.id}/edit`)}
+                      title="Edit"
+                      className="p-1.5 rounded-lg border border-slate-200 text-slate-400 hover:text-[#0f1f38] hover:border-[#0f1f38] transition-colors"
+                    >
+                      <Pencil size={12} />
+                    </button>
+                  )}
 
                   {pending && (
                     <button
@@ -467,12 +460,6 @@ export default function ReservationsPage() {
                       <LogOut size={11} />
                       {act === "checkout" ? "…" : "Check-Out"}
                     </button>
-                  )}
-
-                  {checkedOut && (
-                    <span className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-100 text-slate-400 text-[11px] font-semibold border border-slate-200">
-                      <CheckCircle2 size={11} /> Done
-                    </span>
                   )}
                 </div>
               </div>

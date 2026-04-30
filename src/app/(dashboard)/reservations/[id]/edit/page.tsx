@@ -140,8 +140,24 @@ export default function EditBookingPage() {
         setCity(d.city ?? "");
         setState(d.state ?? "");
         setPostal(d.postal ?? "");
-        setCountryName(d.country ?? "");
-        setPhone(d.phone ?? "");
+
+        // Restore country name and derive phone country code + strip it from stored phone
+        const loadedCountry = d.country ?? "";
+        setCountryName(loadedCountry);
+        if (loadedCountry) {
+          const countryEntry = allCountries.find((c) => c.name === loadedCountry)
+            ?? allCountries.find((c) => c.isoCode === loadedCountry);
+          if (countryEntry?.phonecode) {
+            const code = `+${countryEntry.phonecode.split("-")[0].split(",")[0].trim()}`;
+            setCountryCode(code);
+            const rawPhone = d.phone ?? "";
+            setPhone(rawPhone.startsWith(code) ? rawPhone.slice(code.length) : rawPhone);
+          } else {
+            setPhone(d.phone ?? "");
+          }
+        } else {
+          setPhone(d.phone ?? "");
+        }
         setEmail(d.email ?? "");
         setCheckIn(d.checkIn ?? todayISO());
         setCheckOut(d.checkOut ?? todayISO());
