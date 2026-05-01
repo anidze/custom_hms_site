@@ -48,3 +48,4 @@ next-env.d.ts
 .DOCUMENTATION.md
 /src/generated/prisma
 nul
+.scripts

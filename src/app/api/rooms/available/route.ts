@@ -29,8 +29,10 @@ export async function GET(req: NextRequest) {
              CAST(r.price_per_night AS DECIMAL(10,2)) AS price_per_night
       FROM rooms r
       LEFT JOIN room_type rt ON rt.id = r.room_type_id
+      LEFT JOIN housekeeping hk ON hk.room_id = r.id AND hk.hotel_id = r.hotel_id
       WHERE r.hotel_id = @hotel_id
         AND r.is_available = 1
+        AND ISNULL(hk.status, N'CLEAN') NOT IN (N'DIRTY', N'OUT OF SERVICE')
     `;
 
     if (roomType) {

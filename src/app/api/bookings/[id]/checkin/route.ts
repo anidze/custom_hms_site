@@ -49,7 +49,7 @@ export async function POST(
       .input("id", sql.Int, bookingId)
       .query("UPDATE bookings SET status_id = @status_id WHERE id = @id");
 
-    // Ensure assigned room is marked occupied (Clean → Dirty in housekeeping)
+    // Mark room as occupied
     await pool
       .request()
       .input("id", sql.Int, bookingId)
@@ -57,6 +57,27 @@ export async function POST(
         UPDATE rooms
         SET is_available = 0
         WHERE id = (SELECT room_id FROM bookings WHERE id = @id AND room_id IS NOT NULL)
+      `);
+
+    // Set housekeeping status to DIRTY on check-in
+    await pool
+      .request()
+      .input("id",         sql.Int,        bookingId)
+      .input("hotel_id",   sql.Int,        session.hotelId)
+      .input("updated_by", sql.Int,        session.userId)
+      .query(`
+        MERGE housekeeping AS target
+        USING (
+          SELECT room_id, @hotel_id AS hotel_id
+          FROM bookings
+          WHERE id = @id AND room_id IS NOT NULL
+        ) AS source
+        ON target.room_id = source.room_id AND target.hotel_id = source.hotel_id
+        WHEN MATCHED THEN
+          UPDATE SET status = N'DIRTY', updated_by = @updated_by, updated_at = GETDATE()
+        WHEN NOT MATCHED THEN
+          INSERT (hotel_id, room_id, status, updated_by)
+          VALUES (source.hotel_id, source.room_id, N'DIRTY', @updated_by);
       `);
 
     return NextResponse.json({ success: true });

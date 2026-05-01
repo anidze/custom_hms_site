@@ -34,9 +34,10 @@ interface SidebarProps {
   userFullName?: string;
   logoSrc?: string;
   roleName?: string;
+  roleId?: number;
 }
 
-export default function Sidebar({ hotelName = "HMS", userFullName, logoSrc, roleName }: SidebarProps) {
+export default function Sidebar({ hotelName = "HMS", userFullName, logoSrc, roleName, roleId }: SidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
@@ -103,7 +104,7 @@ export default function Sidebar({ hotelName = "HMS", userFullName, logoSrc, role
 
         <div className="my-2 border-t border-zinc-900" />
 
-        {navItems.map(({ label, href, icon: Icon }) => {
+        {navItems.filter(({ href }) => href !== "/housekeeping" || roleId === 4).map(({ label, href, icon: Icon }) => {
           const active = pathname === href || pathname.startsWith(href + "/");
           return (
             <Link
