@@ -8,6 +8,7 @@ import {
   LogIn,
   LogOut,
   Pencil,
+  FileText,
   BedDouble,
   Users,
   CalendarCheck,
@@ -45,7 +46,7 @@ function yesterdayISO() {
 
 
 const FIELD =
-  "w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-700 placeholder-slate-400 outline-none focus:ring-2 focus:ring-[#0f1f38]/15 focus:border-[#0f1f38] transition bg-white";
+  " border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-700 placeholder-slate-400 outline-none focus:ring-2 focus:ring-[#0f1f38]/15 focus:border-[#0f1f38] transition bg-white";
 
 export default function ReservationsPage() {
   const router = useRouter();
@@ -447,6 +448,14 @@ export default function ReservationsPage() {
                       <Pencil size={12} />
                     </button>
                   )}
+
+                  <button
+                    onClick={() => router.push(`/reservations/${r.id}/invoice`)}
+                    title="Invoice"
+                    className="p-1.5 rounded-lg border border-slate-200 text-slate-400 hover:text-[#c9a84c] hover:border-[#c9a84c] transition-colors"
+                  >
+                    <FileText size={12} />
+                  </button>
 
                   {pending && (
                     <button
