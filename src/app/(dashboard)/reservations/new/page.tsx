@@ -12,7 +12,7 @@ function calcNights(from: string, to: string) {
   return Math.max(0, Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86400000));
 }
 
-interface GuestRow { firstName: string; lastName: string; gender: string; age: string; }
+interface GuestRow { firstName: string; lastName: string; gender: string;  }
 interface AvailableRoom { id: number; room_number: string; floor: number | null; room_type_name: string; price_per_night: number; }
 
 const F = "w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-700 placeholder-slate-400 outline-none focus:ring-2 focus:ring-[#0f1f38]/15 focus:border-[#0f1f38] transition";
@@ -50,7 +50,7 @@ export default function NewBookingPage() {
   const [gender, setGender] = useState<"male" | "female">("male");
   const [idType, setIdType] = useState("");
   const [idNumber, setIdNumber] = useState("");
-  const [age, setAge] = useState("");
+  
   const [street1, setStreet1] = useState("");
   const [street2, setStreet2] = useState("");
   const [city, setCity] = useState("");
@@ -63,14 +63,12 @@ export default function NewBookingPage() {
   const [checkIn, setCheckIn] = useState(todayISO);
   const [checkOut, setCheckOut] = useState(tomorrowISO);
   const [roomTypes, setRoomTypes] = useState<string[]>([]);
-  const [timeH, setTimeH] = useState("");
-  const [timeM, setTimeM] = useState("");
-  const [ampm, setAmpm] = useState("PM");
+
   const [roomType, setRoomType] = useState("");
   const [adults, setAdults] = useState("");
   const [kids, setKids] = useState("");
   const [rooms, setRooms] = useState("");
-  const [guests, setGuests] = useState<GuestRow[]>([{ firstName: "", lastName: "", gender: "", age: "" }]);
+  const [guests, setGuests] = useState<GuestRow[]>([{ firstName: "", lastName: "", gender: ""}]);
   const [payment, setPayment] = useState("Cheque");
   const [specialRequest, setSpecialRequest] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -113,7 +111,7 @@ export default function NewBookingPage() {
     }).catch(() => {});
   }, []);
 
-  function addGuest() { setGuests((g) => [...g, { firstName: "", lastName: "", gender: "", age: "" }]); }
+  function addGuest() { setGuests((g) => [...g, { firstName: "", lastName: "", gender: ""}]); }
   function updateGuest(idx: number, field: keyof GuestRow, value: string) {
     setGuests((g) => g.map((row, i) => (i === idx ? { ...row, [field]: value } : row)));
   }
@@ -136,10 +134,10 @@ export default function NewBookingPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          firstName, lastName, gender, idType, idNumber, age,
+          firstName, lastName, gender, idType, idNumber, 
           street1, street2, city, state, postal, country: countryName,
           countryCode, phone, email,
-          checkIn, checkOut, timeH, timeM, ampm,
+          checkIn, checkOut, 
           roomType, adults, kids, rooms,
           guests, payment, specialRequest,
         }),
@@ -239,7 +237,7 @@ export default function NewBookingPage() {
                 </div>
               </div>
               <div>
-                <label className={L}>Arrival Time</label>
+                {/* <label className={L}>Arrival Time</label>
                 <div className="flex items-center gap-2">
                   <div className="flex items-center bg-white border border-slate-200 rounded-xl overflow-hidden">
                     <input className="w-10 px-2 py-2.5 text-sm text-center outline-none text-slate-600" placeholder="HH" maxLength={2} value={timeH} onChange={(e) => setTimeH(e.target.value)} />
@@ -247,7 +245,7 @@ export default function NewBookingPage() {
                     <input className="w-10 px-2 py-2.5 text-sm text-center outline-none text-slate-600" placeholder="MM" maxLength={2} value={timeM} onChange={(e) => setTimeM(e.target.value)} />
                   </div>
                   <Sel><select className={S} style={{ width: 72 }} value={ampm} onChange={(e) => setAmpm(e.target.value)}><option>AM</option><option>PM</option></select></Sel>
-                </div>
+                </div> */}
               </div>
             </div>
           </div>
@@ -293,10 +291,7 @@ export default function NewBookingPage() {
                 <label className={L}>ID Number</label>
                 <input className={F} placeholder="Enter ID number" value={idNumber} onChange={(e) => setIdNumber(e.target.value)} />
               </div>
-              <div>
-                <label className={L}>Age</label>
-                <input className={F} value={age} onChange={(e) => setAge(e.target.value)} type="number" min={0} />
-              </div>
+            
             </div>
             <div className="mb-4">
               <label className={L}><MapPin size={13} className="inline mr-1 -mt-0.5" />Address</label>
@@ -408,7 +403,7 @@ export default function NewBookingPage() {
                           <option value="Female">Female</option>
                         </select>
                       </Sel>
-                      <input className={F} type="number" min={0} placeholder="Age" value={g.age} onChange={(e) => updateGuest(idx, "age", e.target.value)} />
+                    
                     </div>
                     <button type="button" onClick={() => removeGuest(idx)} className="p-2 rounded-lg text-rose-400 hover:text-rose-600 hover:bg-rose-50 transition"><Trash2 size={14} /></button>
                   </div>
