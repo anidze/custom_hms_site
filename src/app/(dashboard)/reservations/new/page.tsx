@@ -200,12 +200,12 @@ export default function NewBookingPage() {
             <div className="grid grid-cols-[1fr_1fr_auto] gap-4 items-end">
               <div>
                 <label className={L}>Check-In Date<Req /></label>
-                <input type="date" className={fieldErrors.checkIn ? FE : F} value={checkIn} min={todayISO()} onChange={(e) => { setCheckIn(e.target.value); setFieldErrors((p) => ({ ...p, checkIn: "" })); }} />
+                <input type="date" className={fieldErrors.checkIn ? FE : F} value={checkIn} onChange={(e) => { setCheckIn(e.target.value); setFieldErrors((p) => ({ ...p, checkIn: "" })); }} />
                 {fieldErrors.checkIn && <p className="text-xs text-rose-500 mt-1">{fieldErrors.checkIn}</p>}
               </div>
               <div>
                 <label className={L}>Check-Out Date<Req /></label>
-                <input type="date" className={fieldErrors.checkOut ? FE : F} value={checkOut} min={checkIn || todayISO()} onChange={(e) => { setCheckOut(e.target.value); setFieldErrors((p) => ({ ...p, checkOut: "" })); }} />
+                <input type="date" className={fieldErrors.checkOut ? FE : F} value={checkOut} min={checkIn} onChange={(e) => { setCheckOut(e.target.value); setFieldErrors((p) => ({ ...p, checkOut: "" })); }} />
                 {fieldErrors.checkOut && <p className="text-xs text-rose-500 mt-1">{fieldErrors.checkOut}</p>}
               </div>
               <div className="flex flex-col items-center justify-center bg-[#0f1f38] rounded-xl px-5 py-2.5 min-w-22">

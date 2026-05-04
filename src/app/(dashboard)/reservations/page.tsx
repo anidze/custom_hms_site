@@ -118,18 +118,26 @@ export default function ReservationsPage() {
   }
   function isPending(s: string) { return !isIn(s) && !isOut(s); }
 
+  // ── Selected date (shared across all tabs) ──────────────────────────────
+  const selectedDate = dateMode === "today" ? today : dateMode === "yesterday" ? yesterdayISO() : customDate;
+
   // ── Filtered rows ─────────────────────────────────────────────────────────
   const filteredRows = useMemo(() => {
     let data = rows;
-    // Date filter
-    if (dateMode !== "all") {
-      const sel = dateMode === "today" ? today : dateMode === "yesterday" ? yesterdayISO() : customDate;
-      if (sel) data = data.filter((r) => r.checkInISO <= sel && r.checkOutISO >= sel);
+    const sel = selectedDate;
+
+    // Tab + date filter
+    if (activeTab === "reservations") {
+      // All pending reservations whose stay overlaps the selected date
+      data = data.filter((r) => isPending(r.bookingStatus) && r.checkInISO <= sel && r.checkOutISO > sel);
+    } else if (activeTab === "checkin") {
+      // Guests arriving on the selected date (pending or already checked in)
+      data = data.filter((r) => r.checkInISO === sel && (isPending(r.bookingStatus) || isIn(r.bookingStatus)));
+    } else if (activeTab === "checkout") {
+      // Guests departing on the selected date (checked-in or already checked out)
+      data = data.filter((r) => r.checkOutISO === sel && (isIn(r.bookingStatus) || isOut(r.bookingStatus)));
     }
-    // Tab filter
-    if (activeTab === "reservations") data = data.filter((r) => isPending(r.bookingStatus));
-    else if (activeTab === "checkin") data = data.filter((r) => r.checkInISO === today && isPending(r.bookingStatus));
-    else if (activeTab === "checkout") data = data.filter((r) => isIn(r.bookingStatus));
+
     // Search
     if (search.trim()) {
       const q = search.toLowerCase();
@@ -141,7 +149,7 @@ export default function ReservationsPage() {
     }
     return data;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows, activeTab, search, today, dateMode, customDate]);
+  }, [rows, activeTab, search, selectedDate]);
 
   // ── Stats ─────────────────────────────────────────────────────────────────
   const stats = useMemo(() => ({
@@ -184,7 +192,7 @@ export default function ReservationsPage() {
               {qNights} {qNights === 1 ? "night" : "nights"}
             </span>
           )}
-        </div>
+        </div>}
         <form onSubmit={handleQuickCreate} className="p-5">
           <div className="grid grid-cols-[1.8fr_1fr_1fr_1fr_auto] gap-3 items-end">
             <div>
@@ -255,7 +263,7 @@ export default function ReservationsPage() {
         </form>
       </div> */}
 
-      {/* ── Date Filter ───────────────────────────────────────────────────── */}
+      {/* ── Date Filter — shown on all tabs ───────────────────────────────── */}
       <div className="flex items-center gap-2 bg-white rounded-2xl border border-slate-200 shadow-sm px-5 py-3.5 flex-wrap">
         <Calendar size={15} className="text-[#c9a84c] shrink-0" />
         <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mr-1">Show for:</span>

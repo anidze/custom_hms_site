@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { Country, City } from "country-state-city";
 import { useRouter, useParams } from "next/navigation";
-import { ChevronDown, X, Plus, Trash2, User, Calendar, CreditCard, MessageSquare, MapPin, Users } from "lucide-react";
+import { ChevronDown, X, Plus, Trash2, User, Calendar, CreditCard, MessageSquare, MapPin, Users, BedDouble } from "lucide-react";
 
 function todayISO() { return new Date().toISOString().split("T")[0]; }
 function calcNights(from: string, to: string) {
@@ -12,6 +12,7 @@ function calcNights(from: string, to: string) {
 }
 
 interface GuestRow { firstName: string; lastName: string; gender: string; age: string; }
+interface AvailableRoom { id: number; room_number: string; floor: number | null; room_type_name: string; price_per_night: number; }
 
 const F = "w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-700 placeholder-slate-400 outline-none focus:ring-2 focus:ring-[#0f1f38]/15 focus:border-[#0f1f38] transition";
 const FE = "w-full bg-white border border-rose-400 rounded-xl px-3.5 py-2.5 text-sm text-slate-700 placeholder-slate-400 outline-none focus:ring-2 focus:ring-rose-400/30 transition";
@@ -80,6 +81,10 @@ export default function EditBookingPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [showRoomModal, setShowRoomModal] = useState(false);
+  const [availableRooms, setAvailableRooms] = useState<AvailableRoom[]>([]);
+  const [loadingRooms, setLoadingRooms] = useState(false);
+  const [assigningRoomId, setAssigningRoomId] = useState<number | null>(null);
 
   const nights = calcNights(checkIn, checkOut);
 
@@ -236,11 +241,37 @@ export default function EditBookingPage() {
         setError(data.error ?? "Unknown error");
         return;
       }
-      router.push("/reservations");
+      // Show room assignment modal
+      setShowRoomModal(true);
+      setLoadingRooms(true);
+      try {
+        const roomsRes = await fetch(
+          `/api/rooms/available?roomType=${encodeURIComponent(roomType)}&checkIn=${checkIn}&checkOut=${checkOut}`
+        );
+        const roomsData = await roomsRes.json();
+        setAvailableRooms(Array.isArray(roomsData) ? roomsData : []);
+      } catch { setAvailableRooms([]); } finally { setLoadingRooms(false); }
     } catch {
       setError("Network error");
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleAssignRoom(roomId: number) {
+    setAssigningRoomId(roomId);
+    try {
+      await fetch(`/api/bookings/${bookingId}/assign-room`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roomId }),
+      });
+    } catch {
+      // ignore — still redirect
+    } finally {
+      setAssigningRoomId(null);
+      setShowRoomModal(false);
+      router.push("/reservations");
     }
   }
 
@@ -256,7 +287,8 @@ export default function EditBookingPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto pb-10">
+    <>
+      <div className="max-w-4xl mx-auto pb-10">
       {/* Breadcrumb */}
       <div className="mb-6 flex items-center gap-2 text-sm text-slate-400">
         <button type="button" onClick={() => router.push("/reservations")} className="hover:text-[#0f1f38] transition-colors font-medium">
@@ -525,5 +557,64 @@ export default function EditBookingPage() {
         </div>
       </form>
     </div>
+
+      {/* Room Assignment Modal */}
+      {showRoomModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl flex flex-col max-h-[80vh] border border-slate-200">
+            <div className="px-6 py-5 border-b border-slate-100 bg-linear-to-r from-[#0f1f38] to-[#1e3a5f] rounded-t-2xl">
+              <div className="flex items-center gap-3 mb-1">
+                <BedDouble size={18} className="text-[#c9a84c]" />
+                <h2 className="text-base font-bold text-white">Assign a Room</h2>
+              </div>
+              <p className="text-xs text-white/60 font-mono">Booking #{`AL${String(bookingId).padStart(4, "0")}`}</p>
+              <p className="text-xs text-white/70 mt-1">{roomType} &middot; {checkIn} &rarr; {checkOut} &middot; {nights} {nights === 1 ? "night" : "nights"}</p>
+            </div>
+            <div className="flex-1 overflow-y-auto p-5">
+              {loadingRooms ? (
+                <div className="text-center py-10">
+                  <div className="w-6 h-6 border-2 border-[#0f1f38] border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                  <p className="text-sm text-slate-400">Loading available rooms…</p>
+                </div>
+              ) : availableRooms.length === 0 ? (
+                <div className="text-center py-10">
+                  <BedDouble size={28} className="text-slate-200 mx-auto mb-2" />
+                  <p className="text-sm text-slate-500 font-medium">No available rooms for {roomType}</p>
+                  <p className="text-xs text-slate-400 mt-1">Try different dates or assign manually later</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {availableRooms.map((room) => (
+                    <div key={room.id} className="flex items-center justify-between p-4 rounded-xl border border-slate-200 hover:border-[#c9a84c] hover:bg-amber-50/30 transition-colors">
+                      <div>
+                        <p className="font-bold text-slate-800 text-sm">Room {room.room_number}</p>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          Floor {room.floor ?? "—"} &middot; {room.room_type_name} &middot; &#8382;{Number(room.price_per_night).toFixed(2)}/night
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => handleAssignRoom(room.id)}
+                        disabled={assigningRoomId === room.id}
+                        className="px-4 py-1.5 rounded-lg bg-[#0f1f38] text-white text-xs font-semibold hover:bg-[#c9a84c] transition-colors disabled:opacity-50"
+                      >
+                        {assigningRoomId === room.id ? "…" : "Select"}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="p-5 border-t border-slate-100">
+              <button
+                onClick={() => { setShowRoomModal(false); router.push("/reservations"); }}
+                className="w-full py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-500 hover:bg-slate-50 transition-colors"
+              >
+                Skip — assign room later
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
