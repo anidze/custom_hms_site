@@ -13,5 +13,5 @@ export default async function HousekeepingPage() {
   if (!session) redirect("/login");
   if (session.roleId !== 4) redirect("/dashboard");
 
-  return <HousekeepingClient />;
+  return <HousekeepingClient hotelName={session.hotelName ?? "HMS"} />;
 }
