@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
-import { ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { ChevronLeft, ChevronRight, Search, User, BedDouble, LogIn, LogOut, Moon } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 const MONTHS   = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -52,6 +52,8 @@ export default function FrontdeskPage() {
   const [rooms, setRooms]             = useState<ApiRoom[]>([]);
   const [bookings, setBookings]       = useState<ApiBooking[]>([]);
   const [loading, setLoading]         = useState(true);
+  const [tooltip, setTooltip] = useState<{ booking: ApiBooking; x: number; y: number } | null>(null);
+  const tooltipTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -217,7 +219,6 @@ export default function FrontdeskPage() {
                 {/* Booking bars */}
                 {filtered.map((b) => {
                   const { left, width, top } = barProps(b);
-                      const roomLabel = roomMap.get(b.room_id)?.room_number ?? "";
                   return (
                     <div
                       key={b.id}
@@ -225,7 +226,16 @@ export default function FrontdeskPage() {
                         BAR_COLORS[b.id % BAR_COLORS.length]
                       }`}
                       style={{ left, width, top, height: ROW_H - 20 }}
-                      title={`${b.guest_name} · Room ${roomLabel} · ${b.check_in} → ${b.check_out}`}
+                      onMouseEnter={(e) => {
+                        if (tooltipTimeout.current) clearTimeout(tooltipTimeout.current);
+                        setTooltip({ booking: b, x: e.clientX, y: e.clientY });
+                      }}
+                      onMouseMove={(e) => {
+                        setTooltip((t) => t ? { ...t, x: e.clientX, y: e.clientY } : null);
+                      }}
+                      onMouseLeave={() => {
+                        tooltipTimeout.current = setTimeout(() => setTooltip(null), 120);
+                      }}
                     >
                       <span className="truncate">{b.guest_name}</span>
                     </div>
@@ -242,16 +252,72 @@ export default function FrontdeskPage() {
           </div>
         )}
       </div>
- <div className="flex justify-end">
-     <button
+      <div className="flex justify-end">
+        <button
           onClick={() => router.push("/reservations/new")}
           className="bg-[#0f1f38] text-white px-5 py-2 rounded-lg text-sm font-semibold hover:bg-[#0d1a33] transition-colors"
         >
-           Add Booking
+          Add Booking
         </button>
       </div>
-      </div>
-  );  
+
+      {/* ── Hover tooltip ─────────────────────────────────── */}
+      {tooltip && (() => {
+        const b = tooltip.booking;
+        const room = roomMap.get(b.room_id);
+        const cin  = new Date(b.check_in);
+        const cout = new Date(b.check_out);
+        const nights = Math.round((cout.getTime() - cin.getTime()) / 86400000);
+        const fmt = (d: Date) =>
+          d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+        // keep card on screen
+        const x = tooltip.x + 14;
+        const y = tooltip.y - 10;
+        return (
+          <div
+            className="fixed z-50 pointer-events-none"
+            style={{ left: x, top: y }}
+          >
+            <div className="bg-[#0f1f38] text-white rounded-xl shadow-2xl border border-white/10 w-64 overflow-hidden">
+              {/* Header */}
+              <div className="px-4 py-3 border-b border-white/10 bg-white/5">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-full bg-orange-500 flex items-center justify-center shrink-0">
+                    <User size={13} className="text-white" />
+                  </div>
+                  <span className="text-sm font-bold leading-tight truncate">{b.guest_name}</span>
+                </div>
+              </div>
+              {/* Details */}
+              <div className="px-4 py-3 space-y-2">
+                <div className="flex items-center gap-2 text-zinc-300">
+                  <BedDouble size={13} className="text-zinc-400 shrink-0" />
+                  <span className="text-xs">
+                    Room <span className="font-semibold text-white">{room?.room_number ?? "—"}</span>
+                    {room?.room_type_name && (
+                      <span className="text-zinc-400"> · {room.room_type_name}</span>
+                    )}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-zinc-300">
+                  <LogIn size={13} className="text-emerald-400 shrink-0" />
+                  <span className="text-xs">Check-in <span className="font-semibold text-white">{fmt(cin)}</span></span>
+                </div>
+                <div className="flex items-center gap-2 text-zinc-300">
+                  <LogOut size={13} className="text-orange-400 shrink-0" />
+                  <span className="text-xs">Check-out <span className="font-semibold text-white">{fmt(cout)}</span></span>
+                </div>
+                <div className="flex items-center gap-2 text-zinc-300">
+                  <Moon size={13} className="text-indigo-400 shrink-0" />
+                  <span className="text-xs"><span className="font-semibold text-white">{nights}</span> night{nights !== 1 ? "s" : ""}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+    </div>
+  );
 }
 
 

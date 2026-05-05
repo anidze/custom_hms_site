@@ -104,7 +104,11 @@ export default function Sidebar({ hotelName = "HMS", userFullName, logoSrc, role
 
         <div className="my-2 border-t border-zinc-900" />
 
-        {navItems.filter(({ href }) => href !== "/housekeeping" || roleId === 4).map(({ label, href, icon: Icon }) => {
+        {navItems.filter(({ href }) => {
+          if (href === "/housekeeping") return roleId === 4;
+          if (href === "/reservations" || href === "/invoice") return roleId !== 4;
+          return true;
+        }).map(({ label, href, icon: Icon }) => {
           const active = pathname === href || pathname.startsWith(href + "/");
           return (
             <Link

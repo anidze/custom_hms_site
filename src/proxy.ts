@@ -27,6 +27,16 @@ export async function proxy(req: NextRequest) {
   const token = req.cookies.get("hms-session")?.value;
   const session = token ? await verifySession(token) : null;
 
+  // /reservations and /invoice — blocked for HOUSEKEEPING (roleId 4)
+  const HOUSEKEEPING_BLOCKED = ["/reservations", "/invoice"];
+  if (
+    session &&
+    session.roleId === 4 &&
+    HOUSEKEEPING_BLOCKED.some((p) => pathname === p || pathname.startsWith(p + "/"))
+  ) {
+    return NextResponse.redirect(new URL("/housekeeping", req.url));
+  }
+
   // /register — only SUPER_ADMIN may visit when logged in
   if (pathname.startsWith("/register")) {
     if (!session) return NextResponse.redirect(new URL("/login", req.url));
