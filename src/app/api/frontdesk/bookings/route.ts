@@ -51,7 +51,8 @@ export async function GET(req: NextRequest) {
         WHERE b.hotel_id = @hotel_id
           AND b.room_id IS NOT NULL
           AND b.check_in  < DATEADD(MONTH, 1, DATEFROMPARTS(@year, @month, 1))
-          AND b.check_out > DATEFROMPARTS(@year, @month, 1)
+          AND b.check_out > DATEFROMPARTS(@year, @month, 1),
+          
         ORDER BY b.check_in ASC
       `);
 

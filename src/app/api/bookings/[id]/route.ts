@@ -48,7 +48,7 @@ export async function GET(
           g.email,
           g.city,
           g.state,
-          g.country,
+          RTRIM(g.country)   AS country,
           g.zip_code         AS postal,
           g.notes
         FROM bookings b
@@ -147,7 +147,7 @@ export async function PUT(
         .input("age", sql.Int, age ? parseInt(age) : null)
         .input("id_type", sql.NVarChar(sql.MAX), idType || null)
         .input("id_number", sql.NVarChar(sql.MAX), idNumber || null)
-        .input("phone", sql.NVarChar(sql.MAX), phone ? `${countryCode ?? ""}${phone}` : null)
+        .input("phone", sql.NVarChar(sql.MAX), phone ? `${countryCode ?? ""}${phone.replace(new RegExp("^\\" + (countryCode ?? "")), "")}` : null)
         .input("email", sql.NVarChar(sql.MAX), email || null)
         .input("city", sql.NVarChar(sql.MAX), city || null)
         .input("state", sql.NVarChar(sql.MAX), state || null)

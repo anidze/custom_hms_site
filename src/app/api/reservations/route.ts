@@ -33,6 +33,10 @@ export async function GET(req: NextRequest) {
         SELECT
           b.id,
           g.full_name                                                     AS guestName,
+          g.phone                                                         AS guestPhone,
+          g.city                                                          AS guestCity,
+          RTRIM(g.country)                                                AS guestCountry,
+          g.email                                                         AS guestEmail,
           'AL' + RIGHT('0000' + CAST(b.id AS VARCHAR(10)), 4)             AS bookingNo,
           ISNULL(b.requested_payment_method, '-')                         AS bookingSource,
           ISNULL(r.room_number, '-')                                      AS roomNo,
