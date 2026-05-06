@@ -16,6 +16,7 @@ import {
   AlertCircle,
   Calendar,
 } from "lucide-react";
+import CheckInModal from "./CheckInModal";
 
 interface BookingRow {
   id: number;
@@ -61,6 +62,7 @@ export default function ReservationsPage() {
   const [customDate, setCustomDate] = useState(() => todayISO());
   const [userRole, setUserRole] = useState("");
   const [search, setSearch] = useState("");
+  const [checkInModalId, setCheckInModalId] = useState<number | null>(null);
 
   const today = todayISO();
 
@@ -91,13 +93,8 @@ export default function ReservationsPage() {
   }, []);
 
   // ── Check-In / Check-Out ──────────────────────────────────────────────────
-  async function handleCheckIn(id: number) {
-    setActionLoading((p) => ({ ...p, [id]: "checkin" }));
-    try {
-      if ((await fetch(`/api/bookings/${id}/checkin`, { method: "POST" })).ok) await fetchData();
-    } finally {
-      setActionLoading((p) => ({ ...p, [id]: undefined }));
-    }
+  function handleCheckIn(id: number) {
+    setCheckInModalId(id);
   }
   async function handleCheckOut(id: number) {
     setActionLoading((p) => ({ ...p, [id]: "checkout" }));
@@ -395,6 +392,15 @@ export default function ReservationsPage() {
             emptyLabel="No departures for this date"
           />
         </>
+      )}
+
+      {/* ── Check-In Modal ─────────────────────────────────────────────── */}
+      {checkInModalId !== null && (
+        <CheckInModal
+          bookingId={checkInModalId}
+          onClose={() => setCheckInModalId(null)}
+          onSuccess={() => { setCheckInModalId(null); fetchData(); }}
+        />
       )}
     </div>
   );

@@ -6,7 +6,7 @@ import sql from "mssql";
 
 // POST /api/bookings/[id]/checkin
 export async function POST(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -19,6 +19,10 @@ export async function POST(
     const bookingId = parseInt(id);
     if (isNaN(bookingId)) return NextResponse.json({ error: "Invalid id" }, { status: 400 });
 
+    // Parse optional body (guests + rooms)
+    let body: { guestId?: number; guests?: { firstName: string; lastName: string; gender: string; phone: string; email: string; idType: string; idNumber: string }[]; rooms?: number[] } = {};
+    try { body = await req.json(); } catch { /* no body */ }
+
     const pool = await getDB();
 
     const owns = await pool
@@ -30,7 +34,127 @@ export async function POST(
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    // Locate "Checked-In" status by name
+    // 1. Update guest information
+    if (body.guestId && Array.isArray(body.guests) && body.guests.length > 0) {
+      const primary = body.guests[0];
+      await pool
+        .request()
+        .input("id", sql.Int, body.guestId)
+        .input("full_name", sql.NVarChar(200), `${primary.firstName} ${primary.lastName}`.trim())
+        .input("first_name", sql.NVarChar(100), primary.firstName || null)
+        .input("last_name", sql.NVarChar(100), primary.lastName || null)
+        .input("gender", sql.NVarChar(20), primary.gender || null)
+        .input("phone", sql.NVarChar(50), primary.phone || null)
+        .input("email", sql.NVarChar(200), primary.email || null)
+        .input("id_type", sql.NVarChar(50), primary.idType || null)
+        .input("id_number", sql.NVarChar(50), primary.idNumber || null)
+        .query(`
+          UPDATE guests SET
+            full_name = @full_name, first_name = @first_name, last_name = @last_name,
+            gender = @gender, phone = @phone, email = @email,
+            id_type = @id_type, id_number = @id_number
+          WHERE id = @id
+        `);
+
+      // Replace additional guests
+      await pool.request().input("booking_id", sql.Int, bookingId)
+        .query("DELETE FROM AdditionalGuests WHERE booking_id = @booking_id");
+
+      for (let i = 1; i < body.guests.length; i++) {
+        const g = body.guests[i];
+        if (!g.firstName && !g.lastName) continue;
+        await pool
+          .request()
+          .input("booking_id", sql.Int, bookingId)
+          .input("first_name", sql.NVarChar(100), g.firstName || "")
+          .input("last_name", sql.NVarChar(100), g.lastName || "")
+          .input("gender", sql.NVarChar(20), g.gender || null)
+          .input("phone", sql.NVarChar(50), g.phone || null)
+          .input("email", sql.NVarChar(200), g.email || null)
+          .input("id_type", sql.NVarChar(50), g.idType || null)
+          .input("id_number", sql.NVarChar(50), g.idNumber || null)
+          .query(`
+            INSERT INTO AdditionalGuests (booking_id, first_name, last_name, gender, phone, email, id_type, id_number)
+            VALUES (@booking_id, @first_name, @last_name, @gender, @phone, @email, @id_type, @id_number)
+          `);
+      }
+    }
+
+    // 2. Assign rooms
+    if (Array.isArray(body.rooms) && body.rooms.length > 0) {
+      const firstRoomId = body.rooms[0];
+
+      // Update primary room on booking
+      await pool
+        .request()
+        .input("id", sql.Int, bookingId)
+        .input("room_id", sql.Int, firstRoomId)
+        .query("UPDATE bookings SET room_id = @room_id WHERE id = @id");
+
+      // Replace booking_rooms entries
+      await pool.request().input("booking_id", sql.Int, bookingId)
+        .query("DELETE FROM booking_rooms WHERE booking_id = @booking_id");
+
+      for (const roomId of body.rooms) {
+        await pool
+          .request()
+          .input("booking_id", sql.Int, bookingId)
+          .input("room_id", sql.Int, roomId)
+          .query("INSERT INTO booking_rooms (booking_id, room_id) VALUES (@booking_id, @room_id)");
+
+        // Mark room as occupied
+        await pool.request().input("room_id", sql.Int, roomId)
+          .query("UPDATE rooms SET is_available = 0 WHERE id = @room_id");
+
+        // Upsert housekeeping
+        await pool
+          .request()
+          .input("room_id", sql.Int, roomId)
+          .input("hotel_id", sql.Int, session.hotelId)
+          .input("updated_by", sql.Int, session.userId)
+          .query(`
+            MERGE housekeeping AS target
+            USING (SELECT @room_id AS room_id, @hotel_id AS hotel_id) AS source
+            ON target.room_id = source.room_id AND target.hotel_id = source.hotel_id
+            WHEN MATCHED THEN
+              UPDATE SET status = N'DIRTY', updated_by = @updated_by, updated_at = GETDATE()
+            WHEN NOT MATCHED THEN
+              INSERT (hotel_id, room_id, status, updated_by)
+              VALUES (source.hotel_id, source.room_id, N'DIRTY', @updated_by);
+          `);
+      }
+    } else {
+      // No rooms provided — still mark existing room_id as occupied if set
+      await pool
+        .request()
+        .input("id", sql.Int, bookingId)
+        .query(`
+          UPDATE rooms SET is_available = 0
+          WHERE id = (SELECT room_id FROM bookings WHERE id = @id AND room_id IS NOT NULL)
+        `);
+
+      await pool
+        .request()
+        .input("id", sql.Int, bookingId)
+        .input("hotel_id", sql.Int, session.hotelId)
+        .input("updated_by", sql.Int, session.userId)
+        .query(`
+          MERGE housekeeping AS target
+          USING (
+            SELECT room_id, @hotel_id AS hotel_id
+            FROM bookings
+            WHERE id = @id AND room_id IS NOT NULL
+          ) AS source
+          ON target.room_id = source.room_id AND target.hotel_id = source.hotel_id
+          WHEN MATCHED THEN
+            UPDATE SET status = N'DIRTY', updated_by = @updated_by, updated_at = GETDATE()
+          WHEN NOT MATCHED THEN
+            INSERT (hotel_id, room_id, status, updated_by)
+            VALUES (source.hotel_id, source.room_id, N'DIRTY', @updated_by);
+        `);
+    }
+
+    // 3. Change booking status to Checked-In
     const statusResult = await pool.request().query(`
       SELECT TOP 1 id FROM booking_status
       WHERE is_active = 1
@@ -48,37 +172,6 @@ export async function POST(
       .input("status_id", sql.Int, statusResult.recordset[0].id)
       .input("id", sql.Int, bookingId)
       .query("UPDATE bookings SET status_id = @status_id WHERE id = @id");
-
-    // Mark room as occupied
-    await pool
-      .request()
-      .input("id", sql.Int, bookingId)
-      .query(`
-        UPDATE rooms
-        SET is_available = 0
-        WHERE id = (SELECT room_id FROM bookings WHERE id = @id AND room_id IS NOT NULL)
-      `);
-
-    // Set housekeeping status to DIRTY on check-in
-    await pool
-      .request()
-      .input("id",         sql.Int,        bookingId)
-      .input("hotel_id",   sql.Int,        session.hotelId)
-      .input("updated_by", sql.Int,        session.userId)
-      .query(`
-        MERGE housekeeping AS target
-        USING (
-          SELECT room_id, @hotel_id AS hotel_id
-          FROM bookings
-          WHERE id = @id AND room_id IS NOT NULL
-        ) AS source
-        ON target.room_id = source.room_id AND target.hotel_id = source.hotel_id
-        WHEN MATCHED THEN
-          UPDATE SET status = N'DIRTY', updated_by = @updated_by, updated_at = GETDATE()
-        WHEN NOT MATCHED THEN
-          INSERT (hotel_id, room_id, status, updated_by)
-          VALUES (source.hotel_id, source.room_id, N'DIRTY', @updated_by);
-      `);
 
     return NextResponse.json({ success: true });
   } catch (err) {
