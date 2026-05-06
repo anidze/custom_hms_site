@@ -105,23 +105,6 @@ export async function POST(
         // Mark room as occupied
         await pool.request().input("room_id", sql.Int, roomId)
           .query("UPDATE rooms SET is_available = 0 WHERE id = @room_id");
-
-        // Upsert housekeeping
-        await pool
-          .request()
-          .input("room_id", sql.Int, roomId)
-          .input("hotel_id", sql.Int, session.hotelId)
-          .input("updated_by", sql.Int, session.userId)
-          .query(`
-            MERGE housekeeping AS target
-            USING (SELECT @room_id AS room_id, @hotel_id AS hotel_id) AS source
-            ON target.room_id = source.room_id AND target.hotel_id = source.hotel_id
-            WHEN MATCHED THEN
-              UPDATE SET status = N'DIRTY', updated_by = @updated_by, updated_at = GETDATE()
-            WHEN NOT MATCHED THEN
-              INSERT (hotel_id, room_id, status, updated_by)
-              VALUES (source.hotel_id, source.room_id, N'DIRTY', @updated_by);
-          `);
       }
     } else {
       // No rooms provided — still mark existing room_id as occupied if set
@@ -131,26 +114,6 @@ export async function POST(
         .query(`
           UPDATE rooms SET is_available = 0
           WHERE id = (SELECT room_id FROM bookings WHERE id = @id AND room_id IS NOT NULL)
-        `);
-
-      await pool
-        .request()
-        .input("id", sql.Int, bookingId)
-        .input("hotel_id", sql.Int, session.hotelId)
-        .input("updated_by", sql.Int, session.userId)
-        .query(`
-          MERGE housekeeping AS target
-          USING (
-            SELECT room_id, @hotel_id AS hotel_id
-            FROM bookings
-            WHERE id = @id AND room_id IS NOT NULL
-          ) AS source
-          ON target.room_id = source.room_id AND target.hotel_id = source.hotel_id
-          WHEN MATCHED THEN
-            UPDATE SET status = N'DIRTY', updated_by = @updated_by, updated_at = GETDATE()
-          WHEN NOT MATCHED THEN
-            INSERT (hotel_id, room_id, status, updated_by)
-            VALUES (source.hotel_id, source.room_id, N'DIRTY', @updated_by);
         `);
     }
 

@@ -113,6 +113,13 @@ export async function PATCH(req: NextRequest) {
           VALUES (@hotel_id, @room_id, @status, @comments, @updated_by);
       `);
 
+    // Sync room availability: CLEAN → available, anything else → unavailable
+    await pool
+      .request()
+      .input("room_id",      sql.Int,        room_id)
+      .input("is_available", sql.Bit,         status === "CLEAN" ? 1 : 0)
+      .query("UPDATE rooms SET is_available = @is_available WHERE id = @room_id");
+
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error("Housekeeping PATCH error:", err);

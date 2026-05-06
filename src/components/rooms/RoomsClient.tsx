@@ -12,17 +12,29 @@ export interface RoomRow {
   facilities: string;
   pricePerNight: string;
   isAvailable: boolean;
-  bookingStatus: "Available" | "Booked";
+  hkStatus: "CLEAN" | "DIRTY" | "OUT OF SERVICE";
+  bookingStatus: "Available" | "Booked" | "Dirty" | "OutOfService";
 }
 
 const CARD_BORDER = {
-  Available: "border-emerald-400",
-  Booked:    "border-rose-400",
+  Available:    "border-emerald-400",
+  Booked:       "border-blue-400",
+  Dirty:        "border-amber-400",
+  OutOfService: "border-slate-300",
 };
 
 const STATUS_BADGE = {
-  Available: "bg-emerald-100 text-emerald-700",
-  Booked:    "bg-rose-100 text-rose-700",
+  Available:    "bg-emerald-100 text-emerald-700",
+  Booked:       "bg-blue-100 text-blue-700",
+  Dirty:        "bg-amber-100 text-amber-700",
+  OutOfService: "bg-slate-100 text-slate-500",
+};
+
+const STATUS_LABEL = {
+  Available:    "AVAILABLE",
+  Booked:       "OCCUPIED",
+  Dirty:        "DIRTY",
+  OutOfService: "OUT OF SERVICE",
 };
 
 interface RoomsClientProps {
@@ -32,7 +44,7 @@ interface RoomsClientProps {
 
 export default function RoomsClient({ rooms, hotelName }: RoomsClientProps) {
   const router = useRouter();
-  const [activeFilter, setActiveFilter] = useState<"all" | "available" | "booked">("all");
+  const [activeFilter, setActiveFilter] = useState<"all" | "available" | "booked" | "dirty" | "outofservice">("all");
   const [selectedFloor, setSelectedFloor] = useState("all");
   const [search, setSearch] = useState("");
   const [collapsedFloors, setCollapsedFloors] = useState<Set<string>>(new Set());
@@ -51,6 +63,8 @@ export default function RoomsClient({ rooms, hotelName }: RoomsClientProps) {
   const filtered = rooms.filter((room) => {
     if (activeFilter === "available" && room.bookingStatus !== "Available") return false;
     if (activeFilter === "booked" && room.bookingStatus !== "Booked") return false;
+    if (activeFilter === "dirty" && room.bookingStatus !== "Dirty") return false;
+    if (activeFilter === "outofservice" && room.bookingStatus !== "OutOfService") return false;
     if (selectedFloor !== "all" && room.floorNo !== selectedFloor) return false;
     if (search && !room.roomNo.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
@@ -96,7 +110,7 @@ export default function RoomsClient({ rooms, hotelName }: RoomsClientProps) {
       <div className="flex-1 p-8 bg-slate-50">
         {/* Filter bar */}
         <div className="flex flex-wrap items-center gap-3 mb-6">
-          {(["all", "available", "booked"] as const).map((f) => (
+          {(["all", "available", "booked", "dirty", "outofservice"] as const).map((f) => (
             <button
               key={f}
               onClick={() => setActiveFilter(f)}
@@ -106,7 +120,7 @@ export default function RoomsClient({ rooms, hotelName }: RoomsClientProps) {
                   : "bg-white text-slate-700 border-slate-300 hover:border-[#0f1f38]"
               }`}
             >
-              {f === "all" ? "All rooms" : f.charAt(0).toUpperCase() + f.slice(1)}
+              {f === "all" ? "All rooms" : f === "outofservice" ? "Out of Service" : f.charAt(0).toUpperCase() + f.slice(1)}
             </button>
           ))}
 
@@ -148,9 +162,13 @@ export default function RoomsClient({ rooms, hotelName }: RoomsClientProps) {
             <span className="text-slate-500">Available: </span>
             <span className="font-bold text-emerald-700">{rooms.filter((r) => r.isAvailable).length}</span>
           </div>
-          <div className="bg-rose-50 rounded-lg px-4 py-2 shadow-sm border border-rose-100 text-sm">
+          <div className="bg-blue-50 rounded-lg px-4 py-2 shadow-sm border border-blue-100 text-sm">
             <span className="text-slate-500">Occupied: </span>
-            <span className="font-bold text-rose-600">{rooms.filter((r) => !r.isAvailable).length}</span>
+            <span className="font-bold text-blue-700">{rooms.filter((r) => r.bookingStatus === "Booked").length}</span>
+          </div>
+          <div className="bg-amber-50 rounded-lg px-4 py-2 shadow-sm border border-amber-100 text-sm">
+            <span className="text-slate-500">Dirty: </span>
+            <span className="font-bold text-amber-700">{rooms.filter((r) => r.bookingStatus === "Dirty").length}</span>
           </div>
         </div>
 
@@ -188,7 +206,7 @@ export default function RoomsClient({ rooms, hotelName }: RoomsClientProps) {
                         >
                           {/* Status badge */}
                           <div className={`w-full text-center rounded-xl px-2 py-1.5 text-xs font-bold tracking-wide ${STATUS_BADGE[room.bookingStatus]}`}>
-                            {room.bookingStatus === "Available" ? "AVAILABLE" : "OCCUPIED"}
+                            {STATUS_LABEL[room.bookingStatus]}
                           </div>
 
                           {/* Room number */}
