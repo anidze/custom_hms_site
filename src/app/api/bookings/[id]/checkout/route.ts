@@ -108,14 +108,25 @@ export async function POST(
     } catch { /* column added by migration */ }
 
     // ── 5. Mark rooms Vacant Dirty + create housekeeping tasks ───────────────
-    const roomRows = await pool
-      .request()
-      .input("id", sql.Int, bookingId)
-      .query(`
-        SELECT room_id FROM booking_rooms WHERE booking_id = @id
-        UNION
-        SELECT room_id FROM bookings WHERE id = @id AND room_id IS NOT NULL
-      `);
+    // Try junction table first, fall back to bookings.room_id if table doesn't exist yet
+    let roomRows: { recordset: { room_id: number }[] } = { recordset: [] };
+    try {
+      roomRows = await pool
+        .request()
+        .input("id", sql.Int, bookingId)
+        .query(`
+          SELECT room_id FROM booking_rooms WHERE booking_id = @id
+          UNION
+          SELECT room_id FROM bookings WHERE id = @id AND room_id IS NOT NULL
+        `);
+    } catch {
+      // booking_rooms table not yet created — use bookings.room_id only
+      const fallback = await pool
+        .request()
+        .input("id", sql.Int, bookingId)
+        .query(`SELECT room_id FROM bookings WHERE id = @id AND room_id IS NOT NULL`);
+      roomRows = fallback;
+    }
 
     for (const row of roomRows.recordset) {
       await pool.request()

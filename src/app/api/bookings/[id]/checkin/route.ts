@@ -143,13 +143,17 @@ export async function POST(
     await pool.request()
       .input('room_id', sql.Int, firstRoomId).input('id', sql.Int, bookingId)
       .query('UPDATE bookings SET room_id = @room_id WHERE id = @id');
-    await pool.request()
-      .input('booking_id', sql.Int, bookingId)
-      .query('DELETE FROM booking_rooms WHERE booking_id = @booking_id');
-    for (const roomId of roomIds) {
+    try {
       await pool.request()
-        .input('booking_id', sql.Int, bookingId).input('room_id', sql.Int, roomId)
-        .query('INSERT INTO booking_rooms (booking_id, room_id) VALUES (@booking_id, @room_id)');
+        .input('booking_id', sql.Int, bookingId)
+        .query('DELETE FROM booking_rooms WHERE booking_id = @booking_id');
+      for (const roomId of roomIds) {
+        await pool.request()
+          .input('booking_id', sql.Int, bookingId).input('room_id', sql.Int, roomId)
+          .query('INSERT INTO booking_rooms (booking_id, room_id) VALUES (@booking_id, @room_id)');
+      }
+    } catch { /* booking_rooms table not yet created — room assigned via bookings.room_id */ }
+    for (const roomId of roomIds) {
       await pool.request().input('room_id', sql.Int, roomId)
         .query('UPDATE rooms SET is_available = 0 WHERE id = @room_id');
       try { await pool.request().input('room_id', sql.Int, roomId)

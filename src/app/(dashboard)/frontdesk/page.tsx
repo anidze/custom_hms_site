@@ -28,6 +28,8 @@ interface ApiBooking {
   guest_name: string;
   check_in: string;   // "YYYY-MM-DD"
   check_out: string;  // "YYYY-MM-DD"
+  booking_status: string;
+  status_color: string;
 }
 
 const CELL_W = 44; // px per day
@@ -219,12 +221,22 @@ export default function FrontdeskPage() {
                 {/* Booking bars */}
                 {filtered.map((b) => {
                   const { left, width, top } = barProps(b);
+                  const sl = b.booking_status.toLowerCase();
+                  const isOut  = sl.includes("check") && sl.includes("out");
+                  const isIn   = (sl.includes("check") && sl.includes("in") && !sl.includes("out")) || sl === "in-house";
+                  const isNo   = sl.includes("no") && sl.includes("show");
+                  const isCan  = sl.includes("cancel");
+                  const barBg  = isCan || isNo
+                    ? "bg-slate-100 text-slate-400 line-through opacity-60"
+                    : isOut
+                    ? "bg-slate-200 text-slate-500 opacity-80"
+                    : isIn
+                    ? "bg-blue-100 text-blue-800"
+                    : BAR_COLORS[b.id % BAR_COLORS.length];
                   return (
                     <div
                       key={b.id}
-                      className={`absolute rounded-lg flex items-center px-2.5 text-xs font-medium cursor-pointer hover:brightness-95 transition-all shadow-sm overflow-hidden ${
-                        BAR_COLORS[b.id % BAR_COLORS.length]
-                      }`}
+                      className={`absolute rounded-lg flex items-center px-2.5 text-xs font-medium cursor-pointer hover:brightness-95 transition-all shadow-sm overflow-hidden ${barBg}`}
                       style={{ left, width, top, height: ROW_H - 20 }}
                       onMouseEnter={(e) => {
                         if (tooltipTimeout.current) clearTimeout(tooltipTimeout.current);
@@ -310,6 +322,14 @@ export default function FrontdeskPage() {
                 <div className="flex items-center gap-2 text-zinc-300">
                   <Moon size={13} className="text-indigo-400 shrink-0" />
                   <span className="text-xs"><span className="font-semibold text-white">{nights}</span> night{nights !== 1 ? "s" : ""}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span
+                    className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold"
+                    style={{ color: b.status_color, backgroundColor: b.status_color + "33" }}
+                  >
+                    {b.booking_status}
+                  </span>
                 </div>
               </div>
             </div>
