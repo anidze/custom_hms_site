@@ -1,15 +1,29 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { ChevronDown, MessageSquare, X, BedDouble, Search } from "lucide-react";
+import { ChevronDown, MessageSquare, X, BedDouble, Search, Lock } from "lucide-react";
 
-type HKStatus = "DIRTY" | "CLEAN" | "OUT OF SERVICE";
+type RoomStatus =
+  | "Vacant Clean"
+  | "Vacant Dirty"
+  | "Occupied"
+  | "Reserved"
+  | "Out Of Order"
+  | "Inspected";
+
+// Statuses a housekeeper can assign (Occupied / Reserved are read-only)
+const CHANGEABLE: RoomStatus[] = [
+  "Vacant Dirty",
+  "Vacant Clean",
+  "Inspected",
+  "Out Of Order",
+];
 
 interface HKRoom {
   id: number;
   room: string;
   roomType: string;
-  status: HKStatus;
+  roomStatus: RoomStatus;
   floor: string;
   comments: string;
 }
@@ -19,7 +33,7 @@ interface ApiHKRoom {
   room_number: string;
   floor: number | null;
   room_type_name: string;
-  status: string;
+  room_status: string;
   comments: string;
 }
 
@@ -27,25 +41,39 @@ interface HousekeepingClientProps {
   hotelName: string;
 }
 
-const STATUS_OPTIONS: HKStatus[] = ["DIRTY", "CLEAN", "OUT OF SERVICE"];
-
-const STATUS_STYLES: Record<HKStatus, string> = {
-  DIRTY:            "bg-rose-100 text-rose-700",
-  CLEAN:            "bg-emerald-100 text-emerald-700",
-  "OUT OF SERVICE": "bg-slate-100 text-slate-500",
+const STATUS_STYLES: Record<RoomStatus, string> = {
+  "Vacant Dirty": "bg-rose-100   text-rose-700",
+  "Vacant Clean": "bg-emerald-100 text-emerald-700",
+  "Occupied":     "bg-blue-100   text-blue-700",
+  "Reserved":     "bg-violet-100 text-violet-700",
+  "Out Of Order": "bg-slate-100  text-slate-500",
+  "Inspected":    "bg-sky-100    text-sky-700",
 };
 
-const CARD_BORDER: Record<HKStatus, string> = {
-  DIRTY:            "border-rose-400",
-  CLEAN:            "border-emerald-400",
-  "OUT OF SERVICE": "border-slate-300",
+const CARD_BORDER: Record<RoomStatus, string> = {
+  "Vacant Dirty": "border-rose-400",
+  "Vacant Clean": "border-emerald-400",
+  "Occupied":     "border-blue-400",
+  "Reserved":     "border-violet-400",
+  "Out Of Order": "border-slate-300",
+  "Inspected":    "border-sky-400",
 };
 
-async function persistHK(room_id: number, status: HKStatus, comments: string) {
+const FILTER_LABELS: { key: RoomStatus | "all"; label: string }[] = [
+  { key: "all",          label: "All Rooms"    },
+  { key: "Vacant Dirty", label: "Dirty"        },
+  { key: "Vacant Clean", label: "Clean"        },
+  { key: "Inspected",    label: "Inspected"    },
+  { key: "Occupied",     label: "Occupied"     },
+  { key: "Reserved",     label: "Reserved"     },
+  { key: "Out Of Order", label: "Out of Order" },
+];
+
+async function persistHK(room_id: number, room_status: RoomStatus, comments: string) {
   await fetch("/api/housekeeping", {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ room_id, status, comments }),
+    body: JSON.stringify({ room_id, room_status, comments }),
   }).catch(console.error);
 }
 
@@ -53,7 +81,7 @@ export default function HousekeepingClient({ hotelName }: HousekeepingClientProp
   const [rooms, setRooms] = useState<HKRoom[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterType, setFilterType] = useState("");
-  const [filterStatus, setFilterStatus] = useState<"" | HKStatus>("");
+  const [filterStatus, setFilterStatus] = useState<"" | RoomStatus>("");
   const [filterFloor, setFilterFloor] = useState("all");
   const [search, setSearch] = useState("");
   const [collapsedFloors, setCollapsedFloors] = useState<Set<string>>(new Set());
@@ -75,12 +103,12 @@ export default function HousekeepingClient({ hotelName }: HousekeepingClientProp
       .then((data: ApiHKRoom[]) => {
         setRooms(
           data.map((r) => ({
-            id: r.id,
-            room: r.room_number,
-            roomType: r.room_type_name,
-            floor: r.floor != null ? String(r.floor).padStart(2, "0") : "01",
-            status: (r.status as HKStatus) ?? "CLEAN",
-            comments: r.comments ?? "",
+            id:         r.id,
+            room:       r.room_number,
+            roomType:   r.room_type_name,
+            floor:      r.floor != null ? String(r.floor).padStart(2, "0") : "01",
+            roomStatus: (r.room_status as RoomStatus) ?? "Vacant Clean",
+            comments:   r.comments ?? "",
           }))
         );
       })
@@ -88,26 +116,25 @@ export default function HousekeepingClient({ hotelName }: HousekeepingClientProp
       .finally(() => setLoading(false));
   }, []);
 
-  function updateStatus(id: number, status: HKStatus) {
+  function updateStatus(id: number, roomStatus: RoomStatus) {
     const room = rooms.find((r) => r.id === id);
     if (!room) return;
-    setRooms((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)));
-    persistHK(id, status, room.comments);
+    setRooms((prev) => prev.map((r) => (r.id === id ? { ...r, roomStatus } : r)));
+    persistHK(id, roomStatus, room.comments);
   }
 
   function updateComment(id: number, comment: string) {
     const room = rooms.find((r) => r.id === id);
     if (!room) return;
     setRooms((prev) => prev.map((r) => (r.id === id ? { ...r, comments: comment } : r)));
-    persistHK(id, room.status, comment);
+    persistHK(id, room.roomStatus, comment);
   }
 
-  const typeOptions = [...new Set(rooms.map((r) => r.roomType))].sort();
+  const typeOptions  = [...new Set(rooms.map((r) => r.roomType))].sort();
   const floorOptions = [...new Set(rooms.map((r) => r.floor))].sort();
-
   const filtered = rooms.filter((r) => {
-    if (filterType && r.roomType !== filterType) return false;
-    if (filterStatus && r.status !== filterStatus) return false;
+    if (filterType   && r.roomType   !== filterType)   return false;
+    if (filterStatus && r.roomStatus !== filterStatus) return false;
     if (filterFloor !== "all" && r.floor !== filterFloor) return false;
     if (search && !r.room.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
@@ -148,21 +175,17 @@ export default function HousekeepingClient({ hotelName }: HousekeepingClientProp
       <div className="flex-1 p-8 bg-slate-50">
         {/* Filter bar */}
         <div className="flex flex-wrap items-center gap-3 mb-6">
-          {(["all", "DIRTY", "CLEAN", "OUT OF SERVICE"] as const).map((s) => (
+          {FILTER_LABELS.map(({ key, label }) => (
             <button
-              key={s}
-              onClick={() => setFilterStatus(s === "all" ? "" : s)}
+              key={key}
+              onClick={() => setFilterStatus(key === "all" ? "" : key as RoomStatus)}
               className={`px-5 py-2 rounded-lg text-sm font-semibold border transition-colors ${
-                (s === "all" ? filterStatus === "" : filterStatus === s)
+                (key === "all" ? filterStatus === "" : filterStatus === key)
                   ? "bg-[#0f1f38] text-white border-[#0f1f38]"
                   : "bg-white text-slate-700 border-slate-300 hover:border-[#0f1f38]"
               }`}
             >
-              {s === "all"
-                ? "All rooms"
-                : s === "OUT OF SERVICE"
-                ? "Out of Service"
-                : s.charAt(0) + s.slice(1).toLowerCase()}
+              {label}
             </button>
           ))}
 
@@ -210,23 +233,21 @@ export default function HousekeepingClient({ hotelName }: HousekeepingClientProp
         </div>
 
         {/* Summary badges */}
-        <div className="flex gap-4 mb-6">
-          <div className="bg-white rounded-lg px-4 py-2 shadow-sm border border-slate-100 text-sm">
-            <span className="text-slate-500">Total Rooms: </span>
-            <span className="font-bold text-slate-800">{rooms.length}</span>
-          </div>
-          <div className="bg-emerald-50 rounded-lg px-4 py-2 shadow-sm border border-emerald-100 text-sm">
-            <span className="text-slate-500">Clean: </span>
-            <span className="font-bold text-emerald-700">{rooms.filter((r) => r.status === "CLEAN").length}</span>
-          </div>
-          <div className="bg-rose-50 rounded-lg px-4 py-2 shadow-sm border border-rose-100 text-sm">
-            <span className="text-slate-500">Dirty: </span>
-            <span className="font-bold text-rose-600">{rooms.filter((r) => r.status === "DIRTY").length}</span>
-          </div>
-          <div className="bg-slate-100 rounded-lg px-4 py-2 shadow-sm border border-slate-200 text-sm">
-            <span className="text-slate-500">Out of Service: </span>
-            <span className="font-bold text-slate-600">{rooms.filter((r) => r.status === "OUT OF SERVICE").length}</span>
-          </div>
+        <div className="flex flex-wrap gap-3 mb-6">
+          {([
+            { label: "Total",       value: rooms.length,                                                          cls: "bg-white border-slate-100 text-slate-800"     },
+            { label: "Dirty",       value: rooms.filter(r => r.roomStatus === "Vacant Dirty").length,             cls: "bg-rose-50 border-rose-100 text-rose-700"      },
+            { label: "Clean",       value: rooms.filter(r => r.roomStatus === "Vacant Clean").length,             cls: "bg-emerald-50 border-emerald-100 text-emerald-700" },
+            { label: "Inspected",   value: rooms.filter(r => r.roomStatus === "Inspected").length,                cls: "bg-sky-50 border-sky-100 text-sky-700"         },
+            { label: "Occupied",    value: rooms.filter(r => r.roomStatus === "Occupied").length,                 cls: "bg-blue-50 border-blue-100 text-blue-700"      },
+            { label: "Reserved",    value: rooms.filter(r => r.roomStatus === "Reserved").length,                 cls: "bg-violet-50 border-violet-100 text-violet-700"},
+            { label: "Out of Order",value: rooms.filter(r => r.roomStatus === "Out Of Order").length,             cls: "bg-slate-100 border-slate-200 text-slate-600"  },
+          ] as const).map(({ label, value, cls }) => (
+            <div key={label} className={`rounded-lg px-4 py-2 shadow-sm border text-sm ${cls}`}>
+              <span className="opacity-70">{label}: </span>
+              <span className="font-bold">{value}</span>
+            </div>
+          ))}
         </div>
 
         {/* Floor groups */}
@@ -263,25 +284,34 @@ export default function HousekeepingClient({ hotelName }: HousekeepingClientProp
 
                   {!isCollapsed && (
                     <div className="flex flex-wrap justify-center gap-5">
-                      {floorRooms.map((r) => (
+                      {floorRooms.map((r) => {
+                        const isReadOnly = r.roomStatus === "Occupied" || r.roomStatus === "Reserved";
+                        return (
                         <div
                           key={r.id}
-                          className={`border-2 ${CARD_BORDER[r.status]} shadow-md rounded-2xl bg-white flex flex-col items-center justify-between w-48 h-56 p-4 gap-2`}
+                          className={`border-2 ${CARD_BORDER[r.roomStatus]} shadow-md rounded-2xl bg-white flex flex-col items-center justify-between w-48 h-56 p-4 gap-2`}
                         >
-                          {/* Status selector */}
+                          {/* Status selector or read-only badge */}
                           <div className="w-full flex justify-center">
-                            <div className="relative inline-flex w-full">
-                              <select
-                                value={r.status}
-                                onChange={(e) => updateStatus(r.id, e.target.value as HKStatus)}
-                                className={`w-full appearance-none rounded-xl px-2 pr-6 py-1.5 text-xs font-bold tracking-wide cursor-pointer focus:outline-none text-center ${STATUS_STYLES[r.status]}`}
-                              >
-                                {STATUS_OPTIONS.map((s) => (
-                                  <option key={s} value={s}>{s}</option>
-                                ))}
-                              </select>
-                              <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none opacity-50" />
-                            </div>
+                            {isReadOnly ? (
+                              <div className={`w-full flex items-center justify-center gap-1.5 rounded-xl px-2 py-1.5 text-xs font-bold tracking-wide ${STATUS_STYLES[r.roomStatus]}`}>
+                                <Lock size={10} />
+                                {r.roomStatus}
+                              </div>
+                            ) : (
+                              <div className="relative inline-flex w-full">
+                                <select
+                                  value={r.roomStatus}
+                                  onChange={(e) => updateStatus(r.id, e.target.value as RoomStatus)}
+                                  className={`w-full appearance-none rounded-xl px-2 pr-6 py-1.5 text-xs font-bold tracking-wide cursor-pointer focus:outline-none text-center ${STATUS_STYLES[r.roomStatus]}`}
+                                >
+                                  {CHANGEABLE.map((s) => (
+                                    <option key={s} value={s}>{s}</option>
+                                  ))}
+                                </select>
+                                <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none opacity-50" />
+                              </div>
+                            )}
                           </div>
 
                           {/* Room number */}
@@ -308,7 +338,8 @@ export default function HousekeepingClient({ hotelName }: HousekeepingClientProp
                             </button>
                           </div>
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>

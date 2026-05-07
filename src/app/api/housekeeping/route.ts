@@ -35,15 +35,14 @@ export async function GET() {
           r.room_number,
           r.floor,
           rt.name_eng AS room_type_name,
-          ISNULL(hk.status,   N'CLEAN') AS status,
-          ISNULL(hk.priority, N'LOW')   AS priority,
-          ISNULL(hk.comments, N'')      AS comments,
-          hk.id AS hk_id
+          ISNULL(r.room_status, N'Vacant Clean') AS room_status,
+          ISNULL(hk.status,    N'CLEAN')         AS hk_status,
+          ISNULL(hk.comments,  N'')              AS comments
         FROM rooms r
         LEFT JOIN room_type rt    ON rt.id = r.room_type_id
         LEFT JOIN housekeeping hk ON hk.room_id = r.id AND hk.hotel_id = r.hotel_id
         WHERE r.hotel_id = @hotel_id
-        ORDER BY r.room_number ASC
+        ORDER BY r.floor ASC, r.room_number ASC
       `);
 
     return NextResponse.json(result.recordset);
@@ -68,9 +67,9 @@ export async function PATCH(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { room_id, status, comments } = body as {
+    const { room_id, room_status, comments } = body as {
       room_id: number;
-      status: string;
+      room_status: string;
       comments: string;
     };
 
@@ -78,24 +77,40 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: "room_id is required" }, { status: 400 });
     }
 
+    // Map room_status → housekeeping status + is_available
+    const ROOM_TO_HK: Record<string, string> = {
+      "Vacant Clean": "CLEAN",
+      "Vacant Dirty": "DIRTY",
+      "Inspected":    "INSPECTED",
+      "Out Of Order": "OUT OF SERVICE",
+    };
+    const hkStatus   = ROOM_TO_HK[room_status] ?? "CLEAN";
+    const isAvailable = ["Vacant Clean", "Inspected"].includes(room_status) ? 1 : 0;
+
     const pool = await getDB();
 
-    // Verify the room belongs to this hotel (prevents cross-hotel writes)
+    // Verify room belongs to this hotel
     const roomCheck = await pool
       .request()
-      .input("room_id", sql.Int, room_id)
+      .input("room_id",  sql.Int, room_id)
       .input("hotel_id", sql.Int, session.hotelId)
-      .query("SELECT id FROM rooms WHERE id = @room_id AND hotel_id = @hotel_id");
+      .query("SELECT id, room_status FROM rooms WHERE id = @room_id AND hotel_id = @hotel_id");
 
     if (roomCheck.recordset.length === 0) {
       return NextResponse.json({ error: "Room not found" }, { status: 404 });
+    }
+
+    // Block changes to Occupied / Reserved rooms
+    const currentStatus: string = roomCheck.recordset[0].room_status ?? "";
+    if (["Occupied", "Reserved"].includes(currentStatus) && room_status !== currentStatus) {
+      return NextResponse.json({ error: `Cannot change status of ${currentStatus} room` }, { status: 400 });
     }
 
     await pool
       .request()
       .input("hotel_id",   sql.Int,          session.hotelId)
       .input("room_id",    sql.Int,          room_id)
-      .input("status",     sql.NVarChar(50),   status   ?? "CLEAN")
+      .input("hk_status",  sql.NVarChar(50),  hkStatus)
       .input("comments",   sql.NVarChar(2000), comments ?? null)
       .input("updated_by", sql.Int,            session.userId)
       .query(`
@@ -104,21 +119,27 @@ export async function PATCH(req: NextRequest) {
         ON target.hotel_id = source.hotel_id AND target.room_id = source.room_id
         WHEN MATCHED THEN
           UPDATE SET
-            status     = @status,
+            status     = @hk_status,
             comments   = @comments,
             updated_by = @updated_by,
             updated_at = GETDATE()
         WHEN NOT MATCHED THEN
           INSERT (hotel_id, room_id, status, comments, updated_by)
-          VALUES (@hotel_id, @room_id, @status, @comments, @updated_by);
+          VALUES (@hotel_id, @room_id, @hk_status, @comments, @updated_by);
       `);
 
-    // Sync room availability: CLEAN → available, anything else → unavailable
+    // Update rooms.room_status and is_available
     await pool
       .request()
-      .input("room_id",      sql.Int,        room_id)
-      .input("is_available", sql.Bit,         status === "CLEAN" ? 1 : 0)
-      .query("UPDATE rooms SET is_available = @is_available WHERE id = @room_id");
+      .input("room_id",      sql.Int,         room_id)
+      .input("room_status",  sql.NVarChar(30), room_status)
+      .input("is_available", sql.Bit,          isAvailable)
+      .query(`
+        UPDATE rooms
+        SET room_status  = @room_status,
+            is_available = @is_available
+        WHERE id = @room_id
+      `);
 
     return NextResponse.json({ success: true });
   } catch (err) {

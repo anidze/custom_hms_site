@@ -17,6 +17,7 @@ import {
   Calendar,
 } from "lucide-react";
 import CheckInModal from "./CheckInModal";
+import CheckoutModal from "./CheckoutModal";
 
 interface BookingRow {
   id: number;
@@ -57,12 +58,13 @@ export default function ReservationsPage() {
   const [rows, setRows] = useState<BookingRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
-  const [actionLoading, setActionLoading] = useState<Record<number, "checkin" | "checkout" | undefined>>({});
+  const [actionLoading, setActionLoading] = useState<Record<number, "checkin" | "checkout" | "noshow" | undefined>>({});
   const [dateMode, setDateMode] = useState<"today" | "yesterday" | "custom">("today");
   const [customDate, setCustomDate] = useState(() => todayISO());
   const [userRole, setUserRole] = useState("");
   const [search, setSearch] = useState("");
-  const [checkInModalId, setCheckInModalId] = useState<number | null>(null);
+  const [checkInModalId,  setCheckInModalId]  = useState<number | null>(null);
+  const [checkOutModalId, setCheckOutModalId] = useState<number | null>(null);
 
   const today = todayISO();
 
@@ -96,10 +98,15 @@ export default function ReservationsPage() {
   function handleCheckIn(id: number) {
     setCheckInModalId(id);
   }
-  async function handleCheckOut(id: number) {
-    setActionLoading((p) => ({ ...p, [id]: "checkout" }));
+  function handleCheckOut(id: number) {
+    setCheckOutModalId(id);
+  }
+
+  async function handleNoShow(id: number) {
+    setActionLoading((p) => ({ ...p, [id]: "noshow" }));
     try {
-      if ((await fetch(`/api/bookings/${id}/checkout`, { method: "POST" })).ok) await fetchData();
+      const res = await fetch(`/api/bookings/${id}/noshow`, { method: "POST" });
+      if (res.ok) await fetchData();
     } finally {
       setActionLoading((p) => ({ ...p, [id]: undefined }));
     }
@@ -351,6 +358,7 @@ export default function ReservationsPage() {
             isPending={isPending}
             onCheckIn={handleCheckIn}
             onCheckOut={handleCheckOut}
+            onNoShow={handleNoShow}
             onEdit={(id) => router.push(`/reservations/${id}/edit`)}
             onInvoice={(id) => router.push(`/reservations/${id}/invoice`)}
             emptyLabel="No pending reservations for this date"
@@ -369,6 +377,7 @@ export default function ReservationsPage() {
             isPending={isPending}
             onCheckIn={handleCheckIn}
             onCheckOut={handleCheckOut}
+            onNoShow={handleNoShow}
             onEdit={(id) => router.push(`/reservations/${id}/edit`)}
             onInvoice={(id) => router.push(`/reservations/${id}/invoice`)}
             emptyLabel="No arrivals for this date"
@@ -402,6 +411,15 @@ export default function ReservationsPage() {
           onSuccess={() => { setCheckInModalId(null); fetchData(); }}
         />
       )}
+
+      {/* ── Check-Out Modal ────────────────────────────────────────────── */}
+      {checkOutModalId !== null && (
+        <CheckoutModal
+          bookingId={checkOutModalId}
+          onClose={() => setCheckOutModalId(null)}
+          onSuccess={() => { setCheckOutModalId(null); fetchData(); }}
+        />
+      )}
     </div>
   );
 }
@@ -420,13 +438,14 @@ interface SectionTableProps {
   accent: Accent;
   Icon: React.ElementType;
   rows: BookingRow[];
-  actionLoading: Record<number, "checkin" | "checkout" | undefined>;
+  actionLoading: Record<number, "checkin" | "checkout" | "noshow" | undefined>;
   userRole: string;
   isIn: (s: string) => boolean;
   isOut: (s: string) => boolean;
   isPending: (s: string) => boolean;
   onCheckIn: (id: number) => void;
   onCheckOut: (id: number) => void;
+  onNoShow?: (id: number) => void;
   onEdit: (id: number) => void;
   onInvoice: (id: number) => void;
   emptyLabel: string;
@@ -434,7 +453,7 @@ interface SectionTableProps {
 
 function SectionTable({
   title, accent, Icon, rows, actionLoading, userRole,
-  isIn, isOut, isPending, onCheckIn, onCheckOut, onEdit, onInvoice, emptyLabel,
+  isIn, isOut, isPending, onCheckIn, onCheckOut, onNoShow, onEdit, onInvoice, emptyLabel,
 }: SectionTableProps) {
   const a = ACCENT_MAP[accent];
   return (
@@ -520,6 +539,11 @@ function SectionTable({
                 <button onClick={() => onInvoice(r.id)} title="Invoice" className="p-1.5 rounded-lg border border-slate-200 text-slate-400 hover:text-[#c9a84c] hover:border-[#c9a84c] transition-colors">
                   <FileText size={12} />
                 </button>
+                {pending && onNoShow && (
+                  <button onClick={() => onNoShow(r.id)} disabled={!!act} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-50 text-slate-600 text-[11px] font-semibold hover:bg-slate-100 disabled:opacity-50 transition-colors border border-slate-200" title="Mark No-Show">
+                    {act === "noshow" ? "…" : "No-Show"}
+                  </button>
+                )}
                 {pending && (
                   <button onClick={() => onCheckIn(r.id)} disabled={!!act} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 text-[11px] font-semibold hover:bg-emerald-100 disabled:opacity-50 transition-colors border border-emerald-200">
                     <LogIn size={11} />{act === "checkin" ? "…" : "Check-In"}

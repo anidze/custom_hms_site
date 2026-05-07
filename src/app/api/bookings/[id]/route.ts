@@ -28,12 +28,15 @@ export async function GET(
       .query(`
         SELECT
           b.id,
+          b.room_id                                                        AS roomId,
           CONVERT(varchar(10), b.check_in,  120) AS checkIn,
           CONVERT(varchar(10), b.check_out, 120) AS checkOut,
+          DATEDIFF(day, b.check_in, b.check_out)                           AS nights,
           b.arrival_time     AS arrivalTime,
           b.guests_count     AS adults,
           b.kids_count       AS kids,
           b.rooms_count      AS rooms,
+          b.total_price      AS totalPrice,
           b.requested_payment_method AS payment,
           b.special_request  AS specialRequest,
           rt.name_eng        AS roomType,
