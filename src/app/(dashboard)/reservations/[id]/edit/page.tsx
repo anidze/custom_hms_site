@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { Country, City } from "country-state-city";
 import { useRouter, useParams } from "next/navigation";
-import { ChevronDown, X, Plus, Trash2, User, Calendar, CreditCard, MessageSquare, MapPin, Users, BedDouble } from "lucide-react";
+import { ChevronDown, ChevronUp, BedDouble, CreditCard, MessageSquare, Calendar, Users, Plus, Trash2 } from "lucide-react";
 
 function todayISO() { return new Date().toISOString().split("T")[0]; }
 function calcNights(from: string, to: string) {
@@ -11,17 +11,34 @@ function calcNights(from: string, to: string) {
   return Math.max(0, Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86400000));
 }
 
-interface GuestRow { firstName: string; lastName: string; gender: string; }
 interface AvailableRoom { id: number; room_number: string; floor: number | null; room_type_name: string; price_per_night: number; }
+
+type DocType = "" | "Passport" | "ID" | "Driver Licence";
+
+interface GuestRow {
+  firstName: string;
+  lastName: string;
+  phone: string;
+  email: string;
+  country: string;
+  city: string;
+  zip: string;
+  address: string;
+  docType: DocType;
+  docNumber: string;
+  birthDate: string;
+  birthPlace: string;
+  nationality: string;
+  docIssueDate: string;
+}
 
 const F = "w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-700 placeholder-slate-400 outline-none focus:ring-2 focus:ring-[#0f1f38]/15 focus:border-[#0f1f38] transition";
 const FE = "w-full bg-white border border-rose-400 rounded-xl px-3.5 py-2.5 text-sm text-slate-700 placeholder-slate-400 outline-none focus:ring-2 focus:ring-rose-400/30 transition";
 const S = "w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-600 outline-none focus:ring-2 focus:ring-[#0f1f38]/15 focus:border-[#0f1f38] transition appearance-none";
 const SE = "w-full bg-white border border-rose-400 rounded-xl px-3.5 py-2.5 text-sm text-slate-600 outline-none focus:ring-2 focus:ring-rose-400/30 transition appearance-none";
 const L = "block text-sm font-semibold text-slate-600 mb-1.5";
-function Req() { return <span className="text-rose-500 ml-0.5">*</span>; }
-const ID_TYPES = ["Passport", "Driving License", "National ID", "Other"];
-const PAYMENT_METHODS = ["Cheque", "Paypal", "Cash", "Credit Card"];
+
+const PAYMENT_METHODS = ["Cash", "Credit Card"];
 
 function Sel({ children }: { children: React.ReactNode }) {
   return (
@@ -47,33 +64,21 @@ export default function EditBookingPage() {
   const params = useParams();
   const bookingId = params.id as string;
 
-  const [loadingData, setLoadingData] = useState(true);
-  const [guestId, setGuestId] = useState<number | null>(null);
+  const allCountries = useMemo(() => Country.getAllCountries(), []);
 
+  const [loadingData, setLoadingData] = useState(true);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [gender, setGender] = useState<"male" | "female">("male");
-  const [idType, setIdType] = useState("");
-  const [idNumber, setIdNumber] = useState("");
-  
-  const [street1, setStreet1] = useState("");
-  const [street2, setStreet2] = useState("");
-  const [city, setCity] = useState("");
-  const [state, setState] = useState("");
-  const [postal, setPostal] = useState("");
-  const [countryName, setCountryName] = useState("");
-  const [countryCode, setCountryCode] = useState("");
-  const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
+  const [guests, setGuests] = useState<GuestRow[]>([]);
+  const [expandedGuests, setExpandedGuests] = useState<Set<number>>(new Set());
   const [checkIn, setCheckIn] = useState(todayISO);
   const [checkOut, setCheckOut] = useState(todayISO);
   const [roomTypes, setRoomTypes] = useState<string[]>([]);
   const [roomType, setRoomType] = useState("");
-  const [adults, setAdults] = useState("");
-  const [kids, setKids] = useState("");
-  const [rooms, setRooms] = useState("");
-  const [guests, setGuests] = useState<GuestRow[]>([{ firstName: "", lastName: "", gender: "" }]);
-  const [payment, setPayment] = useState("Cheque");
+  const [adults, setAdults] = useState("1");
+  const [kids, setKids] = useState("0");
+  const [rooms, setRooms] = useState("1");
+  const [payment, setPayment] = useState("");
   const [specialRequest, setSpecialRequest] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -83,42 +88,12 @@ export default function EditBookingPage() {
   const [loadingRooms, setLoadingRooms] = useState(false);
   const [assigningRoomId, setAssigningRoomId] = useState<number | null>(null);
 
-  const nights = calcNights(checkIn, checkOut);
-
-  const allCountries = useMemo(() => Country.getAllCountries(), []);
-
-  const availableCities = useMemo(() => {
-    if (!countryName) return [];
-    const found = allCountries.find((c) => c.name === countryName);
-    if (!found) return [];
-    const raw = City.getCitiesOfCountry(found.isoCode) ?? [];
-    return [...new Set(raw.map((c) => c.name))].sort();
-  }, [countryName, allCountries]);
-
-  function handleCountryChange(isoCode: string) {
-    setCity("");
-    if (isoCode) {
-      const found = allCountries.find((c) => c.isoCode === isoCode);
-      setCountryName(found?.name ?? isoCode);
-      if (found?.phonecode) {
-        const code = found.phonecode.split("-")[0].split(",")[0].trim();
-        setCountryCode(`+${code}`);
-      }
-    } else {
-      setCountryName("");
-      setCountryCode("");
-    }
-  }
-
   // Load room types
   useEffect(() => {
-    fetch("/api/rooms")
-      .then((r) => r.json())
-      .then((data: { room_type_name: string }[]) => {
-        const unique = [...new Set(data.map((r) => r.room_type_name).filter(Boolean))];
-        setRoomTypes(unique);
-      })
-      .catch(() => {});
+    fetch("/api/rooms").then((r) => r.json()).then((data: { room_type_name: string }[]) => {
+      const unique = [...new Set(data.map((r) => r.room_type_name).filter(Boolean))];
+      setRoomTypes(unique);
+    }).catch(() => {});
   }, []);
 
   // Load booking data
@@ -127,123 +102,52 @@ export default function EditBookingPage() {
       .then((r) => r.json())
       .then((d) => {
         if (d.error) { setError(d.error); return; }
-
-        setGuestId(d.guestId ?? null);
         setFirstName(d.firstName ?? "");
         setLastName(d.lastName ?? "");
-        setGender((d.gender?.toLowerCase() as "male" | "female") ?? "male");
-        setIdType(d.idType ?? "");
-        setIdNumber(d.idNumber ?? "");
-       
-        // notes was stored as "street1, street2"
-        const noteParts = (d.notes ?? "").split(", ");
-        setStreet1(noteParts[0] ?? "");
-        setStreet2(noteParts[1] ?? "");
-        setCity(d.city ?? "");
-        setState(d.state ?? "");
-        setPostal(d.postal ?? "");
-
-        // Restore country name and derive phone country code + strip it from stored phone
-        const loadedCountry = d.country ?? "";
-        setCountryName(loadedCountry);
-        if (loadedCountry) {
-          const countryEntry = allCountries.find((c) => c.name === loadedCountry)
-            ?? allCountries.find((c) => c.isoCode === loadedCountry);
-          if (countryEntry?.phonecode) {
-            const code = `+${countryEntry.phonecode.split("-")[0].split(",")[0].trim()}`;
-            setCountryCode(code);
-            const rawPhone = d.phone ?? "";
-            setPhone(rawPhone.startsWith(code) ? rawPhone.slice(code.length) : rawPhone);
-          } else {
-            setPhone(d.phone ?? "");
-          }
-        } else {
-          setPhone(d.phone ?? "");
-        }
-        setEmail(d.email ?? "");
         setCheckIn(d.checkIn ?? todayISO());
         setCheckOut(d.checkOut ?? todayISO());
         setRoomType(d.roomType ?? "");
-        setAdults(d.adults != null ? String(d.adults) : "");
-        setKids(d.kids != null ? String(d.kids) : "");
-        setRooms(d.rooms != null ? String(d.rooms) : "");
-        setPayment(d.payment ?? "Cheque");
+        setAdults(d.adults != null ? String(d.adults) : "1");
+        setKids(d.kids != null ? String(d.kids) : "0");
+        setRooms(d.rooms != null ? String(d.rooms) : "1");
+        setPayment(d.payment ?? "");
         setSpecialRequest(d.specialRequest ?? "");
-
         if (Array.isArray(d.additionalGuests) && d.additionalGuests.length > 0) {
           setGuests(d.additionalGuests);
         }
       })
       .catch(() => setError("Failed to load booking"))
       .finally(() => setLoadingData(false));
-  }, [bookingId, allCountries]);
-
-  function addGuest() {
-    setGuests((g) => [...g, { firstName: "", lastName: "", gender: ""}]);
-  }
-
-  function updateGuest(idx: number, field: keyof GuestRow, value: string) {
-    setGuests((g) => g.map((row, i) => (i === idx ? { ...row, [field]: value } : row)));
-  }
-
-  function removeGuest(idx: number) {
-    setGuests((g) => g.filter((_, i) => i !== idx));
-  }
+  }, [bookingId]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-
     const errs: Record<string, string> = {};
     if (!firstName.trim()) errs.firstName = "First name is required";
     if (!lastName.trim()) errs.lastName = "Last name is required";
     if (!checkIn) errs.checkIn = "Check-in date is required";
     if (!checkOut) errs.checkOut = "Check-out date is required";
     if (!roomType) errs.roomType = "Room type is required";
-
-    if (Object.keys(errs).length > 0) {
-      setFieldErrors(errs);
-      return;
-    }
+    if (Object.keys(errs).length > 0) { setFieldErrors(errs); return; }
     setFieldErrors({});
-
     setSubmitting(true);
     setError(null);
-
     try {
       const res = await fetch(`/api/bookings/${bookingId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          guestId,
-          firstName, lastName, gender, idType, idNumber, 
-          street1, street2, city, state, postal, country: countryName,
-          countryCode, phone, email,
-          checkIn, checkOut, 
-          roomType, adults, kids, rooms,
-          guests, payment, specialRequest,
-        }),
+        body: JSON.stringify({ firstName, lastName, checkIn, checkOut, roomType, adults, kids, rooms, payment, specialRequest, additionalGuests: guests }),
       });
-
       const data = await res.json();
-      if (!res.ok) {
-        setError(data.error ?? "Unknown error");
-        return;
-      }
-      // Show room assignment modal
+      if (!res.ok) { setError(data.error ?? "Unknown error"); return; }
       setShowRoomModal(true);
       setLoadingRooms(true);
       try {
-        const roomsRes = await fetch(
-          `/api/rooms/available?roomType=${encodeURIComponent(roomType)}&checkIn=${checkIn}&checkOut=${checkOut}`
-        );
+        const roomsRes = await fetch(`/api/rooms/available?roomType=${encodeURIComponent(roomType)}&checkIn=${checkIn}&checkOut=${checkOut}`);
         const roomsData = await roomsRes.json();
         setAvailableRooms(Array.isArray(roomsData) ? roomsData : []);
       } catch { setAvailableRooms([]); } finally { setLoadingRooms(false); }
-    } catch {
-      setError("Network error");
-    } finally {
-      setSubmitting(false);
-    }
+    } catch { setError("Network error"); } finally { setSubmitting(false); }
   }
 
   async function handleAssignRoom(roomId: number) {
@@ -263,6 +167,28 @@ export default function EditBookingPage() {
     }
   }
 
+  function addGuest() {
+    const idx = guests.length;
+    setGuests((g) => [...g, { firstName: "", lastName: "", phone: "", email: "", country: "", city: "", zip: "", address: "", docType: "", docNumber: "", birthDate: "", birthPlace: "", nationality: "", docIssueDate: "" }]);
+    setExpandedGuests((s) => new Set([...s, idx]));
+  }
+
+  function removeGuest(idx: number) {
+    setGuests((g) => g.filter((_, i) => i !== idx));
+    setExpandedGuests((s) => { const n = new Set(s); n.delete(idx); return n; });
+  }
+
+  function updateGuest(idx: number, field: keyof GuestRow, value: string) {
+    setGuests((g) => g.map((row, i) => (i === idx ? { ...row, [field]: value } : row)));
+  }
+
+  function toggleGuest(idx: number) {
+    setExpandedGuests((s) => { const n = new Set(s); n.has(idx) ? n.delete(idx) : n.add(idx); return n; });
+  }
+
+  const nights = calcNights(checkIn, checkOut);
+  const bookingNo = `AL${String(bookingId).padStart(4, "0")}`;
+
   if (loadingData) {
     return (
       <div className="max-w-4xl mx-auto pb-10 flex items-center justify-center min-h-[40vh]">
@@ -277,40 +203,55 @@ export default function EditBookingPage() {
   return (
     <>
       <div className="max-w-4xl mx-auto pb-10">
-      {/* Breadcrumb */}
-      <div className="mb-6 flex items-center gap-2 text-sm text-slate-400">
-        <button type="button" onClick={() => router.push("/reservations")} className="hover:text-[#0f1f38] transition-colors font-medium">
-          Reservations
-        </button>
-        <span>/</span>
-        <span className="text-slate-600 font-semibold">Edit Booking</span>
-      </div>
+        {/* Breadcrumb */}
+        <div className="mb-6 flex items-center gap-2 text-sm text-slate-400">
+          <button type="button" onClick={() => router.push("/reservations")} className="hover:text-[#0f1f38] transition-colors font-medium">
+            Reservations
+          </button>
+          <span>/</span>
+          <span className="text-slate-600 font-semibold">Edit Booking</span>
+        </div>
 
-      <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-5">
 
-        {/* ── Booking Details ── */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-          <SectionHeader icon={Calendar} title="Booking Details" />
-          <div className="grid grid-cols-[1fr_1fr_auto] gap-4 items-end">
-            <div>
-              <label className={L}>Check-In Date<Req /></label>
-              <input type="date" className={fieldErrors.checkIn ? FE : F} value={checkIn} onChange={(e) => { setCheckIn(e.target.value); setFieldErrors((p) => ({ ...p, checkIn: "" })); }} />
-              {fieldErrors.checkIn && <p className="text-xs text-rose-500 mt-1">{fieldErrors.checkIn}</p>}
-            </div>
-            <div>
-              <label className={L}>Check-Out Date<Req /></label>
-              <input type="date" className={fieldErrors.checkOut ? FE : F} value={checkOut} min={checkIn || todayISO()} onChange={(e) => { setCheckOut(e.target.value); setFieldErrors((p) => ({ ...p, checkOut: "" })); }} />
-              {fieldErrors.checkOut && <p className="text-xs text-rose-500 mt-1">{fieldErrors.checkOut}</p>}
-            </div>
-            <div className="flex flex-col items-center justify-center bg-[#0f1f38] rounded-xl px-5 py-2.5 min-w-22">
-              <span className="text-2xl font-bold text-white leading-none">{nights || 0}</span>
-              <span className="text-[10px] text-white/60 font-semibold uppercase tracking-wider mt-0.5">{nights === 1 ? "Night" : "Nights"}</span>
+          {/* ── Name ── */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className={L}>First Name <span className="text-rose-500">*</span></label>
+                <input className={fieldErrors.firstName ? FE : F} placeholder="First Name" value={firstName} onChange={(e) => { setFirstName(e.target.value); setFieldErrors((p) => ({ ...p, firstName: "" })); }} />
+                {fieldErrors.firstName && <p className="text-xs text-rose-500 mt-1">{fieldErrors.firstName}</p>}
+              </div>
+              <div>
+                <label className={L}>Last Name <span className="text-rose-500">*</span></label>
+                <input className={fieldErrors.lastName ? FE : F} placeholder="Last Name" value={lastName} onChange={(e) => { setLastName(e.target.value); setFieldErrors((p) => ({ ...p, lastName: "" })); }} />
+                {fieldErrors.lastName && <p className="text-xs text-rose-500 mt-1">{fieldErrors.lastName}</p>}
+              </div>
             </div>
           </div>
-          <div className="grid grid-cols-[1fr_auto] gap-4 items-end mt-4">
-            <div className="grid grid-cols-[1.5fr_1fr_1fr_1fr] gap-4">
+
+          {/* ── Booking Details ── */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+            <SectionHeader icon={Calendar} title="Booking Details" />
+            <div className="grid grid-cols-[1fr_1fr_auto] gap-4 items-end mb-4">
               <div>
-                <label className={L}>Room Type<Req /></label>
+                <label className={L}>Check-In Date <span className="text-rose-500">*</span></label>
+                <input type="date" className={fieldErrors.checkIn ? FE : F} value={checkIn} onChange={(e) => { setCheckIn(e.target.value); setFieldErrors((p) => ({ ...p, checkIn: "" })); }} />
+                {fieldErrors.checkIn && <p className="text-xs text-rose-500 mt-1">{fieldErrors.checkIn}</p>}
+              </div>
+              <div>
+                <label className={L}>Check-Out Date <span className="text-rose-500">*</span></label>
+                <input type="date" className={fieldErrors.checkOut ? FE : F} value={checkOut} min={checkIn} onChange={(e) => { setCheckOut(e.target.value); setFieldErrors((p) => ({ ...p, checkOut: "" })); }} />
+                {fieldErrors.checkOut && <p className="text-xs text-rose-500 mt-1">{fieldErrors.checkOut}</p>}
+              </div>
+              <div className="flex flex-col items-center justify-center bg-[#0f1f38] rounded-xl px-5 py-2.5 min-w-22">
+                <span className="text-2xl font-bold text-white leading-none">{nights || 0}</span>
+                <span className="text-[10px] text-white/60 font-semibold uppercase tracking-wider mt-0.5">{nights === 1 ? "Night" : "Nights"}</span>
+              </div>
+            </div>
+            <div className="grid grid-cols-4 gap-4">
+              <div>
+                <label className={L}>Room Type <span className="text-rose-500">*</span></label>
                 <Sel>
                   <select className={fieldErrors.roomType ? SE : S} value={roomType} onChange={(e) => { setRoomType(e.target.value); setFieldErrors((p) => ({ ...p, roomType: "" })); }}>
                     <option value="">-- Select --</option>
@@ -321,7 +262,7 @@ export default function EditBookingPage() {
               </div>
               <div>
                 <label className={L}>Adults</label>
-                <input className={F} value={adults} onChange={(e) => setAdults(e.target.value)} type="number" min={0} placeholder="1" />
+                <input className={F} value={adults} onChange={(e) => setAdults(e.target.value)} type="number" min={1} placeholder="1" />
               </div>
               <div>
                 <label className={L}>Kids</label>
@@ -332,206 +273,212 @@ export default function EditBookingPage() {
                 <input className={F} value={rooms} onChange={(e) => setRooms(e.target.value)} type="number" min={1} placeholder="1" />
               </div>
             </div>
-         
           </div>
-        </div>
 
-        {/* ── Primary Guest ── */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-          <SectionHeader icon={User} title="Primary Guest Information" />
-          <div className="flex gap-4 items-start mb-4">
-            <div className="grid grid-cols-2 gap-3 flex-1">
-              <div>
-                <label className={L}>First Name<Req /></label>
-                <input className={fieldErrors.firstName ? FE : F} placeholder="First Name" value={firstName} onChange={(e) => { setFirstName(e.target.value); setFieldErrors((p) => ({ ...p, firstName: "" })); }} />
-                {fieldErrors.firstName && <p className="text-xs text-rose-500 mt-1">{fieldErrors.firstName}</p>}
+          {/* ── Guests ── */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-3">
+                <div className="w-1 h-5 bg-[#c9a84c] rounded-full" />
+                <Users size={16} className="text-[#0f1f38]" />
+                <h3 className="text-sm font-bold text-[#0f1f38] uppercase tracking-wider">Guests</h3>
+                {guests.length > 0 && (
+                  <span className="ml-1 px-2 py-0.5 rounded-full bg-[#0f1f38]/10 text-[#0f1f38] text-[10px] font-bold">{guests.length}</span>
+                )}
               </div>
-              <div>
-                <label className={L}>Last Name<Req /></label>
-                <input className={fieldErrors.lastName ? FE : F} placeholder="Last Name" value={lastName} onChange={(e) => { setLastName(e.target.value); setFieldErrors((p) => ({ ...p, lastName: "" })); }} />
-                {fieldErrors.lastName && <p className="text-xs text-rose-500 mt-1">{fieldErrors.lastName}</p>}
-              </div>
+              <button type="button" onClick={addGuest} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#0f1f38] text-white text-xs font-semibold hover:bg-[#1a3152] transition-colors">
+                <Plus size={13} /> Add Guest
+              </button>
             </div>
-            <div className="shrink-0 pt-7">
-              <div className="flex items-center gap-5">
-                {(["male", "female"] as const).map((g) => (
-                  <label key={g} className="flex items-center gap-2 cursor-pointer text-sm text-slate-600">
-                    <span onClick={() => setGender(g)} className={`w-4 h-4 rounded-full border-2 flex items-center justify-center cursor-pointer transition ${gender === g ? "border-[#0f1f38]" : "border-slate-300"}`}>
-                      {gender === g && <span className="w-2 h-2 rounded-full bg-[#0f1f38] block" />}
+
+            {guests.length === 0 ? (
+              <p className="text-sm text-slate-400 text-center py-6">No guests added yet. Click &ldquo;Add Guest&rdquo; to add.</p>
+            ) : (
+              <div className="space-y-3">
+                {guests.map((g, idx) => {
+                  const isOpen = expandedGuests.has(idx);
+                  const label = [g.firstName, g.lastName].filter(Boolean).join(" ") || `Guest ${idx + 1}`;
+                  const citiesOfCountry = g.country
+                    ? (() => { const found = allCountries.find((c) => c.name === g.country); return found ? [...new Set((City.getCitiesOfCountry(found.isoCode) ?? []).map((c) => c.name))].sort() : []; })()
+                    : [];
+                  return (
+                    <div key={idx} className="rounded-xl border border-slate-200 overflow-hidden">
+                      {/* Accordion header */}
+                      <div className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer" onClick={() => toggleGuest(idx)}>
+                        <div className="flex items-center gap-3">
+                          <div className="w-7 h-7 rounded-full bg-[#0f1f38] text-white flex items-center justify-center text-xs font-bold shrink-0">{idx + 1}</div>
+                          <span className="text-sm font-semibold text-slate-700">{label}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button type="button" onClick={(e) => { e.stopPropagation(); removeGuest(idx); }} className="p-1.5 rounded-lg text-rose-400 hover:text-rose-600 hover:bg-rose-50 transition">
+                            <Trash2 size={13} />
+                          </button>
+                          {isOpen ? <ChevronUp size={15} className="text-slate-400" /> : <ChevronDown size={15} className="text-slate-400" />}
+                        </div>
+                      </div>
+
+                      {/* Accordion body */}
+                      {isOpen && (
+                        <div className="p-4 space-y-4">
+                          {/* Name row */}
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <label className={L}>First Name</label>
+                              <input className={F} placeholder="First Name" value={g.firstName} onChange={(e) => updateGuest(idx, "firstName", e.target.value)} />
+                            </div>
+                            <div>
+                              <label className={L}>Last Name</label>
+                              <input className={F} placeholder="Last Name" value={g.lastName} onChange={(e) => updateGuest(idx, "lastName", e.target.value)} />
+                            </div>
+                          </div>
+
+                          {/* Contact row */}
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <label className={L}>Phone</label>
+                              <input className={F} placeholder="+995 xxx xxx xxx" value={g.phone} onChange={(e) => updateGuest(idx, "phone", e.target.value)} type="tel" />
+                            </div>
+                            <div>
+                              <label className={L}>Email</label>
+                              <input className={F} placeholder="guest@email.com" value={g.email} onChange={(e) => updateGuest(idx, "email", e.target.value)} type="email" />
+                            </div>
+                          </div>
+
+                          {/* Country / City / Zip */}
+                          <div className="grid grid-cols-3 gap-4">
+                            <div>
+                              <label className={L}>Country</label>
+                              <Sel>
+                                <select className={S} value={allCountries.find((c) => c.name === g.country)?.isoCode ?? ""} onChange={(e) => { const found = allCountries.find((c) => c.isoCode === e.target.value); updateGuest(idx, "country", found?.name ?? ""); updateGuest(idx, "city", ""); }}>
+                                  <option value="">-- Select --</option>
+                                  {allCountries.map((c) => <option key={c.isoCode} value={c.isoCode}>{c.flag} {c.name}</option>)}
+                                </select>
+                              </Sel>
+                            </div>
+                            <div>
+                              <label className={L}>City</label>
+                              {citiesOfCountry.length > 0 ? (
+                                <Sel>
+                                  <select className={S} value={g.city} onChange={(e) => updateGuest(idx, "city", e.target.value)}>
+                                    <option value="">-- Select --</option>
+                                    {citiesOfCountry.map((c) => <option key={c}>{c}</option>)}
+                                  </select>
+                                </Sel>
+                              ) : (
+                                <input className={F} placeholder="City" value={g.city} onChange={(e) => updateGuest(idx, "city", e.target.value)} />
+                              )}
+                            </div>
+                            <div>
+                              <label className={L}>ZIP / Postal</label>
+                              <input className={F} placeholder="12345" value={g.zip} onChange={(e) => updateGuest(idx, "zip", e.target.value)} />
+                            </div>
+                          </div>
+
+                          {/* Address */}
+                          <div>
+                            <label className={L}>Address</label>
+                            <input className={F} placeholder="Street address" value={g.address} onChange={(e) => updateGuest(idx, "address", e.target.value)} />
+                          </div>
+
+                          {/* Document section */}
+                          <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 space-y-4">
+                            <div>
+                              <label className={L}>Document Type</label>
+                              <Sel>
+                                <select
+                                  className={S}
+                                  value={g.docType}
+                                  onChange={(e) => {
+                                    updateGuest(idx, "docType", e.target.value as DocType);
+                                    updateGuest(idx, "docNumber", "");
+                                    updateGuest(idx, "birthDate", "");
+                                    updateGuest(idx, "birthPlace", "");
+                                    updateGuest(idx, "nationality", "");
+                                    updateGuest(idx, "docIssueDate", "");
+                                  }}
+                                >
+                                  <option value="">-- Select document type --</option>
+                                  <option value="Passport">Passport</option>
+                                  <option value="ID">ID Card</option>
+                                  <option value="Driver Licence">Driver&apos;s Licence</option>
+                                </select>
+                              </Sel>
+                            </div>
+
+                            {g.docType && (
+                              <>
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <label className={L}>
+                                      {g.docType === "Passport" ? "Passport Number" : g.docType === "ID" ? "ID Number" : "Licence Number"}
+                                    </label>
+                                    <input className={F} placeholder="Document number" value={g.docNumber} onChange={(e) => updateGuest(idx, "docNumber", e.target.value)} />
+                                  </div>
+                                  <div>
+                                    <label className={L}>Date of Issue</label>
+                                    <input type="date" className={F} value={g.docIssueDate} onChange={(e) => updateGuest(idx, "docIssueDate", e.target.value)} />
+                                  </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <label className={L}>Date of Birth</label>
+                                    <input type="date" className={F} value={g.birthDate} onChange={(e) => updateGuest(idx, "birthDate", e.target.value)} />
+                                  </div>
+                                  <div>
+                                    <label className={L}>Place of Birth</label>
+                                    <input className={F} placeholder="City / Country" value={g.birthPlace} onChange={(e) => updateGuest(idx, "birthPlace", e.target.value)} />
+                                  </div>
+                                </div>
+                                <div>
+                                  <label className={L}>Citizenship / Nationality</label>
+                                  <input className={F} placeholder="e.g. Georgian" value={g.nationality} onChange={(e) => updateGuest(idx, "nationality", e.target.value)} />
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* ── Payment & Notes ── */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+            <SectionHeader icon={CreditCard} title="Payment & Notes" />
+            <div className="mb-5">
+              <label className={L}>Payment Method</label>
+              <div className="flex items-center gap-6">
+                {PAYMENT_METHODS.map((m) => (
+                  <label key={m} className="flex items-center gap-2 cursor-pointer text-sm text-slate-600">
+                    <span onClick={() => setPayment(m)} className={`w-4 h-4 rounded-full border-2 flex items-center justify-center cursor-pointer transition ${payment === m ? "border-[#0f1f38]" : "border-slate-300"}`}>
+                      {payment === m && <span className="w-2 h-2 rounded-full bg-[#0f1f38] block" />}
                     </span>
-                    {g.charAt(0).toUpperCase() + g.slice(1)}
+                    {m}
                   </label>
                 ))}
               </div>
             </div>
-          </div>
-          <div className="grid grid-cols-[200px_1fr_100px] gap-4 mb-4">
             <div>
-              <label className={L}>ID Proof</label>
-              <Sel><select className={S} value={idType} onChange={(e) => setIdType(e.target.value)}>
-                <option value="">Select ID Type</option>
-                {ID_TYPES.map((t) => <option key={t}>{t}</option>)}
-              </select></Sel>
-            </div>
-            <div>
-              <label className={L}>ID Number</label>
-              <input className={F} placeholder="Enter ID number" value={idNumber} onChange={(e) => setIdNumber(e.target.value)} />
-            </div>
-           
-          </div>
-          <div className="mb-4">
-            <label className={L}><MapPin size={13} className="inline mr-1 -mt-0.5" />Address</label>
-            <div className="space-y-2.5">
-              <input className={F} placeholder="Street Address line 1" value={street1} onChange={(e) => setStreet1(e.target.value)} />
-              <input className={F} placeholder="Street Address line 2 (optional)" value={street2} onChange={(e) => setStreet2(e.target.value)} />
+              <label className={L}><MessageSquare size={13} className="inline mr-1 -mt-0.5" />Special Request</label>
+              <textarea className={`${F} resize-none h-28`} placeholder="Any special requests or notes..." value={specialRequest} onChange={(e) => setSpecialRequest(e.target.value)} />
             </div>
           </div>
-          <div className="grid grid-cols-4 gap-4 mb-4">
-            <div>
-              <label className={L}>Country</label>
-              <div className="relative">
-                <Sel>
-                  <select className={S} value={allCountries.find((c) => c.name === countryName)?.isoCode ?? ""} onChange={(e) => handleCountryChange(e.target.value)}>
-                    <option value="">-- Select --</option>
-                    {allCountries.map((c) => (
-                      <option key={c.isoCode} value={c.isoCode}>{c.flag} {c.name}</option>
-                    ))}
-                  </select>
-                </Sel>
-                {countryName && (
-                  <button type="button" onClick={() => handleCountryChange("")} className="absolute right-8 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 z-10">
-                    <X size={13} />
-                  </button>
-                )}
-              </div>
-            </div>
-            <div>
-              <label className={L}>City</label>
-              <div className="relative">
-                {availableCities.length > 0 ? (
-                  <Sel>
-                    <select className={S} value={city} onChange={(e) => setCity(e.target.value)}>
-                      <option value="">-- Select --</option>
-                      {availableCities.map((c) => <option key={c}>{c}</option>)}
-                    </select>
-                  </Sel>
-                ) : (
-                  <input className={F} placeholder="City" value={city} onChange={(e) => setCity(e.target.value)} />
-                )}
-                {city && (
-                  <button type="button" onClick={() => setCity("")} className="absolute right-8 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 z-10">
-                    <X size={13} />
-                  </button>
-                )}
-              </div>
-            </div>
-            <div>
-              <label className={L}>State / Province</label>
-              <input className={F} placeholder="State" value={state} onChange={(e) => setState(e.target.value)} />
-            </div>
-            <div>
-              <label className={L}>Postal / Zip</label>
-              <input className={F} placeholder="123456" value={postal} onChange={(e) => setPostal(e.target.value)} />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className={L}>Phone No</label>
-              <div className="flex gap-2">
-                <Sel>
-                  <select className="w-24 bg-[#0f1f38] text-white border-none rounded-xl px-2 py-2.5 text-sm font-medium outline-none appearance-none pr-6 cursor-pointer" value={countryCode} onChange={(e) => setCountryCode(e.target.value)}>
-                    <option value="">+</option>
-                    {allCountries.map((c) => {
-                      const code = c.phonecode.split("-")[0].split(",")[0].trim();
-                      return <option key={c.isoCode} value={`+${code}`}>{c.flag} +{code}</option>;
-                    })}
-                  </select>
-                </Sel>
-                <div className="relative flex-1">
-                  <input className={F} placeholder="Contact number" value={phone} onChange={(e) => setPhone(e.target.value)} type="tel" />
-                  {phone && <button type="button" onClick={() => setPhone("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"><X size={13} /></button>}
-                </div>
-              </div>
-            </div>
-            <div>
-              <label className={L}>Email</label>
-              <input className={F} placeholder="guest@email.com" value={email} onChange={(e) => setEmail(e.target.value)} type="email" />
-            </div>
-          </div>
-        </div>
 
-        {/* ── Additional Guests ── */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-          <div className="flex items-center justify-between mb-5">
-            <div className="flex items-center gap-3">
-              <div className="w-1 h-5 bg-[#c9a84c] rounded-full" />
-              <Users size={16} className="text-[#0f1f38]" />
-              <h3 className="text-sm font-bold text-[#0f1f38] uppercase tracking-wider">Additional Guests</h3>
-            </div>
-            <button type="button" onClick={addGuest} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#0f1f38] text-white text-xs font-semibold hover:bg-[#1a3152] transition-colors">
-              <Plus size={13} /> Add Guest
+          {/* Actions */}
+          {error && <p className="text-sm text-rose-500 text-center bg-rose-50 rounded-xl py-3 border border-rose-200 px-4">{error}</p>}
+          <div className="flex items-center justify-between pt-1">
+            <button type="button" onClick={() => router.push("/reservations")} className="px-6 py-2.5 rounded-xl border border-slate-300 text-sm font-semibold text-slate-600 bg-white hover:bg-slate-50 transition-colors">
+              Cancel
+            </button>
+            <button type="submit" disabled={submitting} className="px-8 py-2.5 rounded-xl bg-[#0f1f38] text-white text-sm font-semibold hover:bg-[#1a3152] transition-colors disabled:opacity-60 disabled:cursor-not-allowed shadow-sm">
+              {submitting ? "Saving…" : "Save Changes"}
             </button>
           </div>
-          {guests.length === 0 ? (
-            <p className="text-sm text-slate-400 text-center py-6">No additional guests. Click &ldquo;Add Guest&rdquo; to add more.</p>
-          ) : (
-            <div className="space-y-3">
-              {guests.map((g, idx) => (
-                <div key={idx} className="flex items-center gap-3 p-4 rounded-xl bg-slate-50 border border-slate-200">
-                  <div className="w-7 h-7 rounded-full bg-[#0f1f38]/10 text-[#0f1f38] flex items-center justify-center text-xs font-bold shrink-0">{idx + 1}</div>
-                  <div className="grid grid-cols-[1fr_1fr_140px_80px] gap-3 flex-1">
-                    <input className={F} placeholder="First Name" value={g.firstName} onChange={(e) => updateGuest(idx, "firstName", e.target.value)} />
-                    <input className={F} placeholder="Last Name" value={g.lastName} onChange={(e) => updateGuest(idx, "lastName", e.target.value)} />
-                    <Sel>
-                      <select className={S} value={g.gender} onChange={(e) => updateGuest(idx, "gender", e.target.value)}>
-                        <option value="">Gender</option>
-                        <option value="Male">Male</option>
-                        <option value="Female">Female</option>
-                      </select>
-                    </Sel>
-     
-                  </div>
-                  <button type="button" onClick={() => removeGuest(idx)} className="p-2 rounded-lg text-rose-400 hover:text-rose-600 hover:bg-rose-50 transition"><Trash2 size={14} /></button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* ── Payment & Notes ── */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-          <SectionHeader icon={CreditCard} title="Payment & Notes" />
-          <div className="mb-5">
-            <label className={L}>Payment Method</label>
-            <div className="flex items-center gap-6 flex-wrap">
-              {PAYMENT_METHODS.map((m) => (
-                <label key={m} className="flex items-center gap-2 cursor-pointer text-sm text-slate-600">
-                  <span onClick={() => setPayment(m)} className={`w-4 h-4 rounded-full border-2 flex items-center justify-center cursor-pointer transition ${payment === m ? "border-[#0f1f38]" : "border-slate-300"}`}>
-                    {payment === m && <span className="w-2 h-2 rounded-full bg-[#0f1f38] block" />}
-                  </span>
-                  {m}
-                </label>
-              ))}
-            </div>
-          </div>
-          <div>
-            <label className={L}><MessageSquare size={13} className="inline mr-1 -mt-0.5" />Special Request</label>
-            <textarea className={`${F} resize-none h-28`} placeholder="Any special requests or notes..." value={specialRequest} onChange={(e) => setSpecialRequest(e.target.value)} />
-          </div>
-        </div>
-
-        {/* Actions */}
-        {error && <p className="text-sm text-rose-500 text-center bg-rose-50 rounded-xl py-3 border border-rose-200 px-4">{error}</p>}
-        <div className="flex items-center justify-between pt-1">
-          <button type="button" onClick={() => router.push("/reservations")} className="px-6 py-2.5 rounded-xl border border-slate-300 text-sm font-semibold text-slate-600 bg-white hover:bg-slate-50 transition-colors">
-            Cancel
-          </button>
-          <button type="submit" disabled={submitting} className="px-8 py-2.5 rounded-xl bg-[#0f1f38] text-white text-sm font-semibold hover:bg-[#1a3152] transition-colors disabled:opacity-60 disabled:cursor-not-allowed shadow-sm">
-            {submitting ? "Saving…" : "Save Changes"}
-          </button>
-        </div>
-      </form>
-    </div>
+        </form>
+      </div>
 
       {/* Room Assignment Modal */}
       {showRoomModal && (
@@ -542,7 +489,7 @@ export default function EditBookingPage() {
                 <BedDouble size={18} className="text-[#c9a84c]" />
                 <h2 className="text-base font-bold text-white">Assign a Room</h2>
               </div>
-              <p className="text-xs text-white/60 font-mono">Booking #{`AL${String(bookingId).padStart(4, "0")}`}</p>
+              <p className="text-xs text-white/60 font-mono">Booking #{bookingNo}</p>
               <p className="text-xs text-white/70 mt-1">{roomType} &middot; {checkIn} &rarr; {checkOut} &middot; {nights} {nights === 1 ? "night" : "nights"}</p>
             </div>
             <div className="flex-1 overflow-y-auto p-5">

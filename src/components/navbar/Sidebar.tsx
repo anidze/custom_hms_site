@@ -157,52 +157,64 @@ export default function Sidebar({ hotelName = "HMS", userFullName, logoSrc, role
           </button>
 
           {notifOpen && (
-            <div className="absolute left-full top-0 ml-2 z-50 w-72 bg-white rounded-xl shadow-xl border border-zinc-100 overflow-hidden">
-              {/* header */}
-              <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-100">
-                <span className="text-xs font-semibold text-zinc-700 uppercase tracking-wide">Notifications</span>
+            <div className="absolute left-full top-0 ml-2 z-50 w-80 bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
+              {/* ── Header ── */}
+              <div className="px-5 py-4 bg-[#0f1f38]">
+                <div className="flex items-center gap-2.5 mb-3">
+                  <div className="w-1 h-5 bg-[#c9a84c] rounded-full shrink-0" />
+                  <Bell size={15} className="text-white/80" />
+                  <h3 className="text-xs font-bold text-white uppercase tracking-wider">Notifications</h3>
+                </div>
                 <input
                   type="date"
                   value={selectedDate}
                   onChange={(e) => setSelectedDate(e.target.value)}
-                  className="text-[11px] text-zinc-600 border border-zinc-200 rounded-md px-2 py-0.5 outline-none focus:border-orange-400"
+                  className="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-xs text-white placeholder-white/50 outline-none focus:border-[#c9a84c] focus:bg-white/15 transition"
                 />
+                <p className="mt-1.5 text-[10px] text-white/50 font-medium">
+                  {isToday ? "Showing today's activity" : new Date(selectedDate + "T00:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "2-digit", month: "short", year: "numeric" })}
+                </p>
               </div>
 
+              {/* ── Body ── */}
               {notifLoading ? (
-                <div className="flex items-center justify-center py-6 text-zinc-400 text-xs">Loading...</div>
+                <div className="flex items-center justify-center py-8 text-slate-400 text-xs">Loading...</div>
               ) : notifData ? (
-                <div className="p-3 space-y-2">
-                  <p className="text-[10px] text-zinc-400 font-medium px-1">
-                    {isToday ? "Today" : new Date(selectedDate + "T00:00:00").toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
-                  </p>
-
+                <div className="p-4 space-y-3">
                   {/* Check-ins */}
-                  <div className="flex items-center gap-3 rounded-lg bg-emerald-50 px-3 py-2.5">
-                    <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
-                      <LogIn size={14} className="text-emerald-600" />
+                  <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0">
+                        <LogIn size={16} className="text-emerald-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-[#0f1f38]">Reservations</p>
+                        <p className="text-[11px] text-slate-400 font-medium">Check-in{notifData.checkIns !== 1 ? "s" : ""}</p>
+                      </div>
+                      <div className="flex flex-col items-center justify-center bg-[#0f1f38] rounded-xl px-3.5 py-1.5 min-w-[44px]">
+                        <span className="text-xl font-bold text-white leading-none">{notifData.checkIns}</span>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-zinc-700">Reservations</p>
-                      <p className="text-[11px] text-zinc-400">Check-in{notifData.checkIns !== 1 ? "s" : ""}</p>
-                    </div>
-                    <span className="text-lg font-bold text-emerald-600 shrink-0">{notifData.checkIns}</span>
                   </div>
 
                   {/* Check-outs */}
-                  <div className="flex items-center gap-3 rounded-lg bg-rose-50 px-3 py-2.5">
-                    <div className="w-8 h-8 rounded-full bg-rose-100 flex items-center justify-center shrink-0">
-                      <LogOutIcon size={14} className="text-rose-500" />
+                  <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-rose-50 border border-rose-100 flex items-center justify-center shrink-0">
+                        <LogOutIcon size={16} className="text-rose-500" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-[#0f1f38]">Check-outs</p>
+                        <p className="text-[11px] text-slate-400 font-medium">Departure{notifData.checkOuts !== 1 ? "s" : ""}</p>
+                      </div>
+                      <div className="flex flex-col items-center justify-center bg-[#c9a84c] rounded-xl px-3.5 py-1.5 min-w-[44px]">
+                        <span className="text-xl font-bold text-white leading-none">{notifData.checkOuts}</span>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-zinc-700">Check-outs</p>
-                      <p className="text-[11px] text-zinc-400">Departure{notifData.checkOuts !== 1 ? "s" : ""}</p>
-                    </div>
-                    <span className="text-lg font-bold text-rose-500 shrink-0">{notifData.checkOuts}</span>
                   </div>
                 </div>
               ) : (
-                <div className="flex items-center justify-center py-6 text-zinc-400 text-xs">No data</div>
+                <div className="flex items-center justify-center py-8 text-slate-400 text-xs">No data</div>
               )}
             </div>
           )}
