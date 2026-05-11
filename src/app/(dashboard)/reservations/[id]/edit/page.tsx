@@ -12,6 +12,7 @@ function calcNights(from: string, to: string) {
 }
 
 interface AvailableRoom { id: number; room_number: string; floor: number | null; room_type_name: string; price_per_night: number; }
+interface RoomHistoryItem { id: number; previousRoomNumber: string | null; newRoomNumber: string; changedAt: string; notes: string | null; }
 
 type DocType = "" | "Passport" | "ID" | "Driver Licence";
 
@@ -83,10 +84,13 @@ export default function EditBookingPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [showRoomModal, setShowRoomModal] = useState(false);
-  const [availableRooms, setAvailableRooms] = useState<AvailableRoom[]>([]);
-  const [loadingRooms, setLoadingRooms] = useState(false);
-  const [assigningRoomId, setAssigningRoomId] = useState<number | null>(null);
+  const [roomNumber, setRoomNumber] = useState<string | null>(null);
+  const [currentRoomId, setCurrentRoomId] = useState<number | null>(null);
+  const [showChangeRoomModal, setShowChangeRoomModal] = useState(false);
+  const [changeRoomRooms, setChangeRoomRooms] = useState<AvailableRoom[]>([]);
+  const [changeRoomLoading, setChangeRoomLoading] = useState(false);
+  const [changingRoomId, setChangingRoomId] = useState<number | null>(null);
+  const [roomHistory, setRoomHistory] = useState<RoomHistoryItem[]>([]);
 
   // Load room types
   useEffect(() => {
@@ -112,6 +116,8 @@ export default function EditBookingPage() {
         setRooms(d.rooms != null ? String(d.rooms) : "1");
         setPayment(d.payment ?? "");
         setSpecialRequest(d.specialRequest ?? "");
+        setRoomNumber(d.roomNumber ?? null);
+        setCurrentRoomId(d.roomId ?? null);
         if (Array.isArray(d.additionalGuests) && d.additionalGuests.length > 0) {
           setGuests(d.additionalGuests);
         }
@@ -140,30 +146,50 @@ export default function EditBookingPage() {
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error ?? "Unknown error"); return; }
-      setShowRoomModal(true);
-      setLoadingRooms(true);
-      try {
-        const roomsRes = await fetch(`/api/rooms/available?roomType=${encodeURIComponent(roomType)}&checkIn=${checkIn}&checkOut=${checkOut}`);
-        const roomsData = await roomsRes.json();
-        setAvailableRooms(Array.isArray(roomsData) ? roomsData : []);
-      } catch { setAvailableRooms([]); } finally { setLoadingRooms(false); }
+      router.push("/reservations");
     } catch { setError("Network error"); } finally { setSubmitting(false); }
   }
 
-  async function handleAssignRoom(roomId: number) {
-    setAssigningRoomId(roomId);
+  async function openChangeRoomModal() {
+    setShowChangeRoomModal(true);
+    setChangeRoomLoading(true);
     try {
-      await fetch(`/api/bookings/${bookingId}/assign-room`, {
+      const [roomsRes, histRes] = await Promise.all([
+        fetch(`/api/rooms/available?roomType=${encodeURIComponent(roomType)}&checkIn=${checkIn}&checkOut=${checkOut}`),
+        fetch(`/api/bookings/${bookingId}/change-room`),
+      ]);
+      const roomsData = await roomsRes.json();
+      const histData = await histRes.json();
+      setChangeRoomRooms(Array.isArray(roomsData) ? roomsData : []);
+      setRoomHistory(Array.isArray(histData) ? histData : []);
+    } catch {
+      setChangeRoomRooms([]);
+      setRoomHistory([]);
+    } finally {
+      setChangeRoomLoading(false);
+    }
+  }
+
+  async function handleChangeRoom(roomId: number) {
+    setChangingRoomId(roomId);
+    try {
+      const res = await fetch(`/api/bookings/${bookingId}/change-room`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ roomId }),
       });
+      const data = await res.json();
+      if (res.ok) {
+        setRoomNumber(data.roomNumber);
+        setCurrentRoomId(roomId);
+        setShowChangeRoomModal(false);
+        // refresh history next open
+        setRoomHistory([]);
+      }
     } catch {
-      // ignore — still redirect
+      // ignore
     } finally {
-      setAssigningRoomId(null);
-      setShowRoomModal(false);
-      router.push("/reservations");
+      setChangingRoomId(null);
     }
   }
 
@@ -272,6 +298,44 @@ export default function EditBookingPage() {
                 <label className={L}>Rooms</label>
                 <input className={F} value={rooms} onChange={(e) => setRooms(e.target.value)} type="number" min={1} placeholder="1" />
               </div>
+            </div>
+          </div>
+
+          {/* ── Room Assignment ── */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+            <SectionHeader icon={BedDouble} title="Room Assignment" />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {roomNumber ? (
+                  <>
+                    <div className="w-10 h-10 rounded-xl bg-[#0f1f38] flex items-center justify-center shrink-0">
+                      <BedDouble size={16} className="text-[#c9a84c]" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-slate-800">Room {roomNumber}</p>
+                      <p className="text-xs text-slate-400">Currently assigned</p>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
+                      <BedDouble size={16} className="text-slate-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-slate-500">No room assigned</p>
+                      <p className="text-xs text-slate-400">Assign a room to this booking</p>
+                    </div>
+                  </>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={openChangeRoomModal}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl border border-[#0f1f38] text-[#0f1f38] text-xs font-semibold hover:bg-[#0f1f38] hover:text-white transition-colors"
+              >
+                <BedDouble size={13} />
+                {roomNumber ? "Change Room" : "Assign Room"}
+              </button>
             </div>
           </div>
 
@@ -480,58 +544,86 @@ export default function EditBookingPage() {
         </form>
       </div>
 
-      {/* Room Assignment Modal */}
-      {showRoomModal && (
+      {/* Change Room Modal */}
+      {showChangeRoomModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl flex flex-col max-h-[80vh] border border-slate-200">
             <div className="px-6 py-5 border-b border-slate-100 bg-linear-to-r from-[#0f1f38] to-[#1e3a5f] rounded-t-2xl">
               <div className="flex items-center gap-3 mb-1">
                 <BedDouble size={18} className="text-[#c9a84c]" />
-                <h2 className="text-base font-bold text-white">Assign a Room</h2>
+                <h2 className="text-base font-bold text-white">{roomNumber ? "Change Room" : "Assign Room"}</h2>
               </div>
               <p className="text-xs text-white/60 font-mono">Booking #{bookingNo}</p>
-              <p className="text-xs text-white/70 mt-1">{roomType} &middot; {checkIn} &rarr; {checkOut} &middot; {nights} {nights === 1 ? "night" : "nights"}</p>
+              {roomNumber && <p className="text-xs text-white/70 mt-0.5">Current: Room {roomNumber}</p>}
+              <p className="text-xs text-white/70 mt-0.5">{roomType} &middot; {checkIn} &rarr; {checkOut} &middot; {nights} {nights === 1 ? "night" : "nights"}</p>
             </div>
-            <div className="flex-1 overflow-y-auto p-5">
-              {loadingRooms ? (
+            <div className="flex-1 overflow-y-auto p-5 space-y-5">
+              <div>
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Available Rooms</p>
+              {changeRoomLoading ? (
                 <div className="text-center py-10">
                   <div className="w-6 h-6 border-2 border-[#0f1f38] border-t-transparent rounded-full animate-spin mx-auto mb-2" />
                   <p className="text-sm text-slate-400">Loading available rooms…</p>
                 </div>
-              ) : availableRooms.length === 0 ? (
+              ) : changeRoomRooms.length === 0 ? (
                 <div className="text-center py-10">
                   <BedDouble size={28} className="text-slate-200 mx-auto mb-2" />
                   <p className="text-sm text-slate-500 font-medium">No available rooms for {roomType}</p>
-                  <p className="text-xs text-slate-400 mt-1">Try different dates or assign manually later</p>
+                  <p className="text-xs text-slate-400 mt-1">Try different dates or room type</p>
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {availableRooms.map((room) => (
-                    <div key={room.id} className="flex items-center justify-between p-4 rounded-xl border border-slate-200 hover:border-[#c9a84c] hover:bg-amber-50/30 transition-colors">
+                  {changeRoomRooms.map((room) => (
+                    <div key={room.id} className={`flex items-center justify-between p-3 rounded-xl border transition-colors ${room.id === currentRoomId ? "border-[#c9a84c] bg-amber-50/40" : "border-slate-200 hover:border-[#c9a84c] hover:bg-amber-50/20"}`}>
                       <div>
                         <p className="font-bold text-slate-800 text-sm">Room {room.room_number}</p>
-                        <p className="text-xs text-slate-500 mt-0.5">
-                          Floor {room.floor ?? "—"} &middot; {room.room_type_name} &middot; &#8382;{Number(room.price_per_night).toFixed(2)}/night
-                        </p>
+                        <p className="text-xs text-slate-500 mt-0.5">Floor {room.floor ?? "—"} &middot; {room.room_type_name} &middot; &#8382;{Number(room.price_per_night).toFixed(2)}/night</p>
                       </div>
-                      <button
-                        onClick={() => handleAssignRoom(room.id)}
-                        disabled={assigningRoomId === room.id}
-                        className="px-4 py-1.5 rounded-lg bg-[#0f1f38] text-white text-xs font-semibold hover:bg-[#c9a84c] transition-colors disabled:opacity-50"
-                      >
-                        {assigningRoomId === room.id ? "…" : "Select"}
-                      </button>
+                      {room.id === currentRoomId ? (
+                        <span className="px-3 py-1.5 rounded-lg bg-[#c9a84c]/20 text-[#c9a84c] text-xs font-semibold">Current</span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleChangeRoom(room.id)}
+                          disabled={changingRoomId === room.id}
+                          className="px-3 py-1.5 rounded-lg bg-[#0f1f38] text-white text-xs font-semibold hover:bg-[#c9a84c] hover:text-[#0f1f38] transition-colors disabled:opacity-50"
+                        >
+                          {changingRoomId === room.id ? "…" : "Select"}
+                        </button>
+                      )}
                     </div>
                   ))}
+                </div>
+              )}
+              </div>
+
+              {roomHistory.length > 0 && (
+                <div>
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Change History</p>
+                  <div className="space-y-2">
+                    {roomHistory.map((h) => (
+                      <div key={h.id} className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
+                        <div className="w-1.5 h-1.5 rounded-full bg-[#c9a84c] mt-1.5 shrink-0" />
+                        <div className="flex-1">
+                          <p className="text-xs text-slate-700 font-medium">
+                            {h.previousRoomNumber ? `Room ${h.previousRoomNumber}` : "No room"} → Room {h.newRoomNumber}
+                          </p>
+                          <p className="text-[10px] text-slate-400 mt-0.5">{h.changedAt}</p>
+                          {h.notes && <p className="text-xs text-slate-500 mt-0.5 italic">{h.notes}</p>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
             <div className="p-5 border-t border-slate-100">
               <button
-                onClick={() => { setShowRoomModal(false); router.push("/reservations"); }}
+                type="button"
+                onClick={() => setShowChangeRoomModal(false)}
                 className="w-full py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-500 hover:bg-slate-50 transition-colors"
               >
-                Skip — assign room later
+                Close
               </button>
             </div>
           </div>

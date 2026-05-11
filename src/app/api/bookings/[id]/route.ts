@@ -29,6 +29,7 @@ export async function GET(
         SELECT
           b.id,
           b.room_id                                                        AS roomId,
+          r_assigned.room_number                                           AS roomNumber,
           CONVERT(varchar(10), b.check_in,  120) AS checkIn,
           CONVERT(varchar(10), b.check_out, 120) AS checkOut,
           DATEDIFF(day, b.check_in, b.check_out)                           AS nights,
@@ -57,6 +58,7 @@ export async function GET(
         FROM bookings b
         JOIN  guests    g  ON g.id  = b.guest_id
         LEFT JOIN room_type rt ON rt.id = b.requested_room_type_id
+        LEFT JOIN rooms r_assigned ON r_assigned.id = b.room_id
         WHERE b.id = @id AND b.hotel_id = @hotel_id
       `);
 
