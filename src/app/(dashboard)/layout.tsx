@@ -30,9 +30,9 @@ export default async function DashboardLayout({
 
   return (
     <div className="flex min-h-screen bg-zinc-50">
-      <Sidebar hotelName={session?.hotelName} userFullName={session?.fullName} logoSrc={hotelLogoSrc} roleName={session?.roleName} roleId={session?.roleId} />
+      <Sidebar hotelName={session?.hotelName} logoSrc={hotelLogoSrc} roleName={session?.roleName} roleId={session?.roleId} />
       <div className="flex-1 ml-60 flex flex-col min-h-screen">
-        <TopHeader userFullName={session?.fullName} role="Admin" />
+        <TopHeader userFullName={session?.fullName} email={session?.email} roleId={session?.roleId} />
         <main className="flex-1 p-6">{children}</main>
       </div>
     </div>

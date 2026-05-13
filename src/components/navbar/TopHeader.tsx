@@ -1,7 +1,8 @@
 "use client";
 
-import { usePathname } from "next/navigation";
-import { Calendar } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { useState, useRef, useEffect } from "react";
+import { Calendar, LogOut } from "lucide-react";
 
 const PAGE_TITLES: Record<string, string> = {
   "/dashboard":    "Dashboard",
@@ -13,14 +14,26 @@ const PAGE_TITLES: Record<string, string> = {
   "/reports":      "Reports",
 };
 
+const ROLE_LABELS: Record<number, string> = {
+  1: "Super Admin",
+  2: "Admin",
+  3: "Front Desk",
+  4: "Housekeeping",
+};
+
 interface TopHeaderProps {
-  userFullName?: string;
-  role?: string;
+  // userFullName?: string;
+  email?: string;
+  roleId?: number;
 }
 
-export default function TopHeader({ userFullName = "Admin", role = "Admin" }: TopHeaderProps) {
+export default function TopHeader({ email, roleId }: TopHeaderProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const title = PAGE_TITLES[pathname] ?? "HMS";
+
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const today = new Date();
   const displayDate = today.toLocaleDateString("en-GB", {
@@ -30,12 +43,25 @@ export default function TopHeader({ userFullName = "Admin", role = "Admin" }: To
     weekday: "short",
   });
 
-  const initials = userFullName
-    .split(" ")
-    .map((n) => n[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
+  const roleLabel = roleId ? (ROLE_LABELS[roleId] ?? "") : "";
+
+  const initials = "AD"; // Placeholder initials since userFullName is no longer used
+
+  useEffect(() => {
+    function handleOutside(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    }
+    if (dropdownOpen) document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, [dropdownOpen]);
+
+  async function handleLogout() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.push("/login");
+    router.refresh();
+  }
 
   return (
     <header className="h-14 bg-white border-b border-zinc-100 flex items-center justify-between px-6 shrink-0">
@@ -48,15 +74,31 @@ export default function TopHeader({ userFullName = "Admin", role = "Admin" }: To
         <span>{displayDate}</span>
       </div>
 
-      {/* Right: user */}
-      <div className="flex items-center gap-2.5">
-        <div className="text-right hidden sm:block">
-          <p className="text-xs font-medium text-zinc-800 leading-tight">{userFullName}</p>
-          <p className="text-[11px] text-zinc-400 leading-tight">{role}</p>
-        </div>
-        <div className="w-8 h-8 rounded-full bg-[#0f1f38] flex items-center justify-center text-white text-xs font-semibold shrink-0">
+      {/* Right: avatar with dropdown */}
+      <div className="relative" ref={dropdownRef}>
+        <button
+          onClick={() => setDropdownOpen((v) => !v)}
+          className="w-8 h-8 rounded-full bg-[#0f1f38] flex items-center justify-center text-white text-xs font-semibold shrink-0 hover:opacity-80 transition-opacity"
+        >
           {initials}
-        </div>
+        </button>
+
+        {dropdownOpen && (
+          <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-xl shadow-lg border border-zinc-100 overflow-hidden z-50">
+            <div className="px-4 py-3 border-b border-zinc-100">
+              {/* <p className="text-[13px] font-semibold text-zinc-800 truncate">{userFullName}</p> */}
+              {email && <p className="text-[11px] text-zinc-400 truncate mt-0.5">{email}</p>}
+              {roleLabel && <p className="text-[11px] text-[#c9a84c] font-medium mt-0.5">{roleLabel}</p>}
+            </div>
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-zinc-500 hover:text-red-500 hover:bg-red-50 transition-colors"
+            >
+              <LogOut size={14} />
+              <span>Logout</span>
+            </button>
+          </div>
+        )}
       </div>
     </header>
   );
