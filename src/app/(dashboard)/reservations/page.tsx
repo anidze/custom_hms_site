@@ -9,6 +9,7 @@ import {
   LogOut,
   Pencil,
   FileText,
+  Wallet,
   BedDouble,
   Users,
   CalendarCheck,
@@ -361,6 +362,7 @@ export default function ReservationsPage() {
             onNoShow={handleNoShow}
             onEdit={(id) => router.push(`/reservations/${id}/edit`)}
             onInvoice={(id) => router.push(`/reservations/${id}/invoice`)}
+            onFolio={(id) => router.push(`/reservations/${id}/folio`)}
             emptyLabel="No pending reservations for this date"
           />
 
@@ -380,6 +382,7 @@ export default function ReservationsPage() {
             onNoShow={handleNoShow}
             onEdit={(id) => router.push(`/reservations/${id}/edit`)}
             onInvoice={(id) => router.push(`/reservations/${id}/invoice`)}
+            onFolio={(id) => router.push(`/reservations/${id}/folio`)}
             emptyLabel="No arrivals for this date"
           />
 
@@ -398,6 +401,7 @@ export default function ReservationsPage() {
             onCheckOut={handleCheckOut}
             onEdit={(id) => router.push(`/reservations/${id}/edit`)}
             onInvoice={(id) => router.push(`/reservations/${id}/invoice`)}
+            onFolio={(id) => router.push(`/reservations/${id}/folio`)}
             emptyLabel="No departures for this date"
           />
         </>
@@ -448,12 +452,13 @@ interface SectionTableProps {
   onNoShow?: (id: number) => void;
   onEdit: (id: number) => void;
   onInvoice: (id: number) => void;
+  onFolio: (id: number) => void;
   emptyLabel: string;
 }
 
 function SectionTable({
   title, accent, Icon, rows, actionLoading, userRole,
-  isIn, isOut, isPending, onCheckIn, onCheckOut, onNoShow, onEdit, onInvoice, emptyLabel,
+  isIn, isOut, isPending, onCheckIn, onCheckOut, onNoShow, onEdit, onInvoice, onFolio, emptyLabel,
 }: SectionTableProps) {
   const a = ACCENT_MAP[accent];
   return (
@@ -538,6 +543,9 @@ function SectionTable({
                 )}
                 <button onClick={() => onInvoice(r.id)} title="Invoice" className="p-1.5 rounded-lg border border-slate-200 text-slate-400 hover:text-[#c9a84c] hover:border-[#c9a84c] transition-colors">
                   <FileText size={12} />
+                </button>
+                <button onClick={() => onFolio(r.id)} title="Folio & Payments" className="p-1.5 rounded-lg border border-slate-200 text-slate-400 hover:text-emerald-600 hover:border-emerald-400 transition-colors">
+                  <Wallet size={12} />
                 </button>
                 {pending && onNoShow && (
                   <button onClick={() => onNoShow(r.id)} disabled={!!act} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-50 text-slate-600 text-[11px] font-semibold hover:bg-slate-100 disabled:opacity-50 transition-colors border border-slate-200" title="Mark No-Show">

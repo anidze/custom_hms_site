@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Country, City } from "country-state-city";
 import { useRouter, useParams } from "next/navigation";
-import { ChevronDown, ChevronUp, BedDouble, CreditCard, MessageSquare, Calendar, Users, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronUp, BedDouble, CreditCard, MessageSquare, Calendar, Users, Plus, Trash2, Wallet, StickyNote } from "lucide-react";
+import PaymentPanel, { type PaymentData } from "@/components/payments/PaymentPanel";
+import NotesPanel,   { type Note        } from "@/components/payments/NotesPanel";
 
 function todayISO() { return new Date().toISOString().split("T")[0]; }
 function calcNights(from: string, to: string) {
@@ -14,7 +16,8 @@ function calcNights(from: string, to: string) {
 interface AvailableRoom { id: number; room_number: string; floor: number | null; room_type_name: string; price_per_night: number; }
 interface RoomHistoryItem { id: number; previousRoomNumber: string | null; newRoomNumber: string; changedAt: string; notes: string | null; }
 
-type DocType = "" | "Passport" | "ID" | "Driver Licence";
+type DocType   = "" | "Passport" | "ID" | "Driver Licence";
+type FolioTab  = "booking" | "payments" | "notes";
 
 interface GuestRow {
   firstName: string;
@@ -92,6 +95,13 @@ export default function EditBookingPage() {
   const [changingRoomId, setChangingRoomId] = useState<number | null>(null);
   const [roomHistory, setRoomHistory] = useState<RoomHistoryItem[]>([]);
 
+  // Folio
+  const [folioTab,       setFolioTab]       = useState<FolioTab>("booking");
+  const [paymentData,    setPaymentData]    = useState<PaymentData | null>(null);
+  const [notes,          setNotes]          = useState<Note[]>([]);
+  const [loadingPayments,setLoadingPayments] = useState(false);
+  const [loadingNotes,   setLoadingNotes]   = useState(false);
+
   // Load room types
   useEffect(() => {
     fetch("/api/rooms").then((r) => r.json()).then((data: { room_type_name: string }[]) => {
@@ -99,6 +109,26 @@ export default function EditBookingPage() {
       setRoomTypes(unique);
     }).catch(() => {});
   }, []);
+
+  const fetchPayments = useCallback(async () => {
+    setLoadingPayments(true);
+    try {
+      const res = await fetch(`/api/bookings/${bookingId}/payments`);
+      const data = await res.json();
+      if (res.ok) setPaymentData(data);
+    } catch { /* ignore */ } finally { setLoadingPayments(false); }
+  }, [bookingId]);
+
+  const fetchNotes = useCallback(async () => {
+    setLoadingNotes(true);
+    try {
+      const res = await fetch(`/api/bookings/${bookingId}/notes`);
+      const data = await res.json();
+      if (res.ok) setNotes(data.notes ?? []);
+    } catch { /* ignore */ } finally { setLoadingNotes(false); }
+  }, [bookingId]);
+
+  useEffect(() => { fetchPayments(); fetchNotes(); }, [fetchPayments, fetchNotes]);
 
   // Load booking data
   useEffect(() => {
@@ -510,24 +540,79 @@ export default function EditBookingPage() {
           </div>
 
           {/* ── Payment & Notes ── */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-            <SectionHeader icon={CreditCard} title="Payment & Notes" />
-            <div className="mb-5">
-              <label className={L}>Payment Method</label>
-              <div className="flex items-center gap-6">
-                {PAYMENT_METHODS.map((m) => (
-                  <label key={m} className="flex items-center gap-2 cursor-pointer text-sm text-slate-600">
-                    <span onClick={() => setPayment(m)} className={`w-4 h-4 rounded-full border-2 flex items-center justify-center cursor-pointer transition ${payment === m ? "border-[#0f1f38]" : "border-slate-300"}`}>
-                      {payment === m && <span className="w-2 h-2 rounded-full bg-[#0f1f38] block" />}
-                    </span>
-                    {m}
-                  </label>
-                ))}
-              </div>
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm">
+            {/* Tab strip */}
+            <div className="flex items-center gap-0 px-6 pt-5 border-b border-slate-100">
+              {([
+                { key: "booking",  label: "Booking",  icon: <CreditCard size={13} /> },
+                { key: "payments", label: "Payments", icon: <Wallet size={13} /> },
+                { key: "notes",    label: "Notes",    icon: <StickyNote size={13} /> },
+              ] as { key: FolioTab; label: string; icon: React.ReactNode }[]).map(({ key, label, icon }) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setFolioTab(key)}
+                  className={`flex items-center gap-1.5 px-4 py-2.5 text-[12px] font-semibold border-b-2 -mb-px transition ${
+                    folioTab === key
+                      ? "border-[#0f1f38] text-[#0f1f38]"
+                      : "border-transparent text-slate-400 hover:text-slate-600"
+                  }`}
+                >
+                  {icon} {label}
+                  {key === "notes" && notes.length > 0 && (
+                    <span className="ml-0.5 bg-zinc-100 text-zinc-500 text-[10px] rounded-full px-1.5 font-medium">{notes.length}</span>
+                  )}
+                </button>
+              ))}
             </div>
-            <div>
-              <label className={L}><MessageSquare size={13} className="inline mr-1 -mt-0.5" />Special Request</label>
-              <textarea className={`${F} resize-none h-28`} placeholder="Any special requests or notes..." value={specialRequest} onChange={(e) => setSpecialRequest(e.target.value)} />
+
+            <div className="p-6">
+              {/* ── Booking tab ── */}
+              {folioTab === "booking" && (
+                <div className="space-y-5">
+                  <div>
+                    <label className={L}>Payment Method</label>
+                    <div className="flex items-center gap-6">
+                      {PAYMENT_METHODS.map((m) => (
+                        <label key={m} className="flex items-center gap-2 cursor-pointer text-sm text-slate-600">
+                          <span onClick={() => setPayment(m)} className={`w-4 h-4 rounded-full border-2 flex items-center justify-center cursor-pointer transition ${payment === m ? "border-[#0f1f38]" : "border-slate-300"}`}>
+                            {payment === m && <span className="w-2 h-2 rounded-full bg-[#0f1f38] block" />}
+                          </span>
+                          {m}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label className={L}><MessageSquare size={13} className="inline mr-1 -mt-0.5" />Special Request</label>
+                    <textarea className={`${F} resize-none h-28`} placeholder="Any special requests or notes..." value={specialRequest} onChange={(e) => setSpecialRequest(e.target.value)} />
+                  </div>
+                </div>
+              )}
+
+              {/* ── Payments tab ── */}
+              {folioTab === "payments" && (
+                loadingPayments ? (
+                  <div className="flex items-center justify-center py-10">
+                    <div className="w-5 h-5 border-2 border-[#0f1f38] border-t-transparent rounded-full animate-spin" />
+                  </div>
+                ) : paymentData ? (
+                  <PaymentPanel bookingId={bookingId} data={paymentData} canDelete onRefresh={fetchPayments} />
+                ) : (
+                  <p className="text-sm text-slate-400 text-center py-10">Could not load payment data.</p>
+                )
+              )}
+
+              {/* ── Notes tab ── */}
+              {folioTab === "notes" && (
+                loadingNotes ? (
+                  <div className="flex items-center justify-center py-10">
+                    <div className="w-5 h-5 border-2 border-[#0f1f38] border-t-transparent rounded-full animate-spin" />
+                  </div>
+                ) : (
+                  <NotesPanel bookingId={bookingId} notes={notes} canDelete onRefresh={fetchNotes} />
+                )
+              )}
             </div>
           </div>
 
