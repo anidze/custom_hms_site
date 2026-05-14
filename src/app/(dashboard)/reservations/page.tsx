@@ -17,8 +17,6 @@ import {
   AlertCircle,
   Calendar,
 } from "lucide-react";
-import CheckInModal from "./CheckInModal";
-import CheckoutModal from "./CheckoutModal";
 
 interface BookingRow {
   id: number;
@@ -64,8 +62,6 @@ export default function ReservationsPage() {
   const [customDate, setCustomDate] = useState(() => todayISO());
   const [userRole, setUserRole] = useState("");
   const [search, setSearch] = useState("");
-  const [checkInModalId,  setCheckInModalId]  = useState<number | null>(null);
-  const [checkOutModalId, setCheckOutModalId] = useState<number | null>(null);
 
   const today = todayISO();
 
@@ -96,11 +92,23 @@ export default function ReservationsPage() {
   }, []);
 
   // ── Check-In / Check-Out ──────────────────────────────────────────────────
-  function handleCheckIn(id: number) {
-    setCheckInModalId(id);
+  async function handleCheckIn(id: number) {
+    setActionLoading((p) => ({ ...p, [id]: "checkin" }));
+    try {
+      const res = await fetch(`/api/bookings/${id}/checkin`, { method: "POST" });
+      if (res.ok) await fetchData();
+    } finally {
+      setActionLoading((p) => ({ ...p, [id]: undefined }));
+    }
   }
-  function handleCheckOut(id: number) {
-    setCheckOutModalId(id);
+  async function handleCheckOut(id: number) {
+    setActionLoading((p) => ({ ...p, [id]: "checkout" }));
+    try {
+      const res = await fetch(`/api/bookings/${id}/checkout`, { method: "POST" });
+      if (res.ok) await fetchData();
+    } finally {
+      setActionLoading((p) => ({ ...p, [id]: undefined }));
+    }
   }
 
   async function handleNoShow(id: number) {
@@ -407,23 +415,6 @@ export default function ReservationsPage() {
         </>
       )}
 
-      {/* ── Check-In Modal ─────────────────────────────────────────────── */}
-      {checkInModalId !== null && (
-        <CheckInModal
-          bookingId={checkInModalId}
-          onClose={() => setCheckInModalId(null)}
-          onSuccess={() => { setCheckInModalId(null); fetchData(); }}
-        />
-      )}
-
-      {/* ── Check-Out Modal ────────────────────────────────────────────── */}
-      {checkOutModalId !== null && (
-        <CheckoutModal
-          bookingId={checkOutModalId}
-          onClose={() => setCheckOutModalId(null)}
-          onSuccess={() => { setCheckOutModalId(null); fetchData(); }}
-        />
-      )}
     </div>
   );
 }
