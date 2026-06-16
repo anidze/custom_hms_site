@@ -102,7 +102,8 @@ export async function PUT(
     const bookingId = parseInt(id);
     if (isNaN(bookingId)) return NextResponse.json({ error: "Invalid id" }, { status: 400 });
 
-    const body = await req.json();
+    let body;
+    try { body = await req.json(); } catch { return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 }); }
     const {
       firstName, lastName, gender, idType, idNumber, age,
       street1, street2, city, state, postal, country,
@@ -184,7 +185,7 @@ export async function PUT(
       .input("special_request", sql.NVarChar(sql.MAX), specialRequest || null)
       .query(`
         UPDATE bookings SET
-          check_in = @check_in, check_out = @check_out,
+          check_in = COALESCE(@check_in, check_in), check_out = COALESCE(@check_out, check_out),
           guests_count = @guests_count, kids_count = @kids_count, rooms_count = @rooms_count,
           arrival_time = @arrival_time, requested_room_type_id = @requested_room_type_id,
           requested_payment_method = @requested_payment_method, special_request = @special_request
