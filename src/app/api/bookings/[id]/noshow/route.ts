@@ -42,6 +42,10 @@ export async function POST(
       return NextResponse.json({ error: "Cannot mark as No Show: guest is already checked in." }, { status: 400 });
     if (statusLow.includes("check") && statusLow.includes("out"))
       return NextResponse.json({ error: "Cannot mark as No Show: booking is already checked out." }, { status: 400 });
+    if (statusLow.includes("no") && statusLow.includes("show"))
+      return NextResponse.json({ error: "Booking is already marked as No Show." }, { status: 400 });
+    if (statusLow.includes("cancel"))
+      return NextResponse.json({ error: "Cannot mark as No Show: booking is cancelled." }, { status: 400 });
 
     // Find No Show status
     const nsStatus = await pool.request().query(`
