@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
       .input("age", sql.Int, age ? parseInt(age) : null)
       .input("id_type", sql.NVarChar(50), idType || null)
       .input("id_number", sql.NVarChar(50), idNumber || null)
-      .input("phone", sql.NVarChar(50), phone ? `${countryCode}${phone.replace(new RegExp("^\\" + countryCode), "")}` : null)
+      .input("phone", sql.NVarChar(50), phone ? `${countryCode ?? ""}${phone.replace(new RegExp("^\\" + (countryCode ?? "")), "")}` : null)
       .input("email", sql.NVarChar(200), email || null)
       .input("city", sql.NVarChar(100), city || null)
       .input("state", sql.NVarChar(100), state || null)
@@ -125,8 +125,12 @@ export async function POST(req: NextRequest) {
 
     const bookingId: number = bookingResult.recordset[0].id;
 
-    // 5. Insert additional guests
-    if (Array.isArray(guests)) {
+    // 5. Insert additional guests (full per-guest details)
+    if (Array.isArray(guests) && guests.length > 0) {
+      // Self-healing: add the nationality column if an older schema lacks it.
+      await pool.request().query(
+        "IF COL_LENGTH('AdditionalGuests', 'nationality') IS NULL ALTER TABLE AdditionalGuests ADD nationality NVARCHAR(100) NULL"
+      );
       for (const g of guests) {
         if (!g.firstName && !g.lastName) continue;
         await pool
@@ -136,9 +140,16 @@ export async function POST(req: NextRequest) {
           .input("last_name", sql.NVarChar(100), g.lastName || "")
           .input("gender", sql.NVarChar(20), g.gender || null)
           .input("age", sql.Int, g.age ? parseInt(g.age) : null)
+          .input("id_type", sql.NVarChar(50), g.idType || null)
+          .input("id_number", sql.NVarChar(50), g.idNumber || null)
+          .input("phone", sql.NVarChar(50), g.phone || null)
+          .input("email", sql.NVarChar(200), g.email || null)
+          .input("nationality", sql.NVarChar(100), g.nationality || null)
           .query(`
-            INSERT INTO AdditionalGuests (booking_id, first_name, last_name, gender, age)
-            VALUES (@booking_id, @first_name, @last_name, @gender, @age)
+            INSERT INTO AdditionalGuests
+              (booking_id, first_name, last_name, gender, age, id_type, id_number, phone, email, nationality)
+            VALUES
+              (@booking_id, @first_name, @last_name, @gender, @age, @id_type, @id_number, @phone, @email, @nationality)
           `);
       }
     }
