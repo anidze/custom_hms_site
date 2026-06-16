@@ -24,7 +24,9 @@ export async function POST(
       return NextResponse.json({ error: "Invalid booking id" }, { status: 400 });
     }
 
-    const { roomId } = await req.json();
+    let body: { roomId?: number };
+    try { body = await req.json(); } catch { return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 }); }
+    const { roomId } = body;
     if (!roomId) {
       return NextResponse.json({ error: "roomId is required" }, { status: 400 });
     }
