@@ -39,6 +39,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 
+# local database scripts, dumps & setup (machine-specific, not for git)
+/db/
+
+# claude code tooling
+/.claude/
+
 # agents
 .github/agents/
 next-env.d.ts
