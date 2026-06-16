@@ -39,6 +39,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const passwordValid = await bcrypt.compare(password, user.password_hash);
+    if (!passwordValid) {
+      return NextResponse.json(
+        { error: "Invalid email or password" },
+        { status: 401 }
+      );
+    }
+
     // Update last login timestamp
     await pool
       .request()
