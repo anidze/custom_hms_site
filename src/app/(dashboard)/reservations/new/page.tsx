@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronDown, BedDouble, CreditCard, MessageSquare, Calendar } from "lucide-react";
+import { ChevronDown, BedDouble, CreditCard, MessageSquare, Calendar, Users, UserPlus, Trash2 } from "lucide-react";
 
 function todayISO() { return new Date().toISOString().split("T")[0]; }
 function tomorrowISO() { const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().split("T")[0]; }
@@ -13,10 +13,22 @@ function calcNights(from: string, to: string) {
 
 interface AvailableRoom { id: number; room_number: string; floor: number | null; room_type_name: string; price_per_night: number; }
 
+interface GuestInfo {
+  firstName: string; lastName: string; gender: string; age: string;
+  idType: string; idNumber: string; phone: string; email: string; nationality: string;
+}
+const blankGuest = (): GuestInfo => ({
+  firstName: "", lastName: "", gender: "", age: "",
+  idType: "", idNumber: "", phone: "", email: "", nationality: "",
+});
+
+const MAX_GUESTS = 20;
+const GENDERS = ["Male", "Female", "Other"];
+const ID_TYPES = ["Passport", "National ID", "Driving License", "Birth Certificate"];
+
 const F = "w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-700 placeholder-slate-400 outline-none focus:ring-2 focus:ring-[#0f1f38]/15 focus:border-[#0f1f38] transition";
 const FE = "w-full bg-white border border-rose-400 rounded-xl px-3.5 py-2.5 text-sm text-slate-700 placeholder-slate-400 outline-none focus:ring-2 focus:ring-rose-400/30 transition";
 const S = "w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-600 outline-none focus:ring-2 focus:ring-[#0f1f38]/15 focus:border-[#0f1f38] transition appearance-none";
-const SE = "w-full bg-white border border-rose-400 rounded-xl px-3.5 py-2.5 text-sm text-slate-600 outline-none focus:ring-2 focus:ring-rose-400/30 transition appearance-none";
 const L = "block text-sm font-semibold text-slate-600 mb-1.5";
 
 const PAYMENT_METHODS = ["Cash", "Credit Card"];
@@ -30,25 +42,24 @@ function Sel({ children }: { children: React.ReactNode }) {
   );
 }
 
-function SectionHeader({ icon: Icon, title }: { icon: React.ElementType; title: string }) {
+function SectionHeader({ icon: Icon, title, right }: { icon: React.ElementType; title: string; right?: React.ReactNode }) {
   return (
     <div className="flex items-center gap-3 mb-5">
       <div className="w-1 h-5 bg-[#c9a84c] rounded-full" />
       <Icon size={16} className="text-[#0f1f38]" />
       <h3 className="text-sm font-bold text-[#0f1f38] uppercase tracking-wider">{title}</h3>
+      {right && <div className="ml-auto">{right}</div>}
     </div>
   );
 }
 
 export default function NewBookingPage() {
   const router = useRouter();
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
+  const [guests, setGuests] = useState<GuestInfo[]>([blankGuest()]);
   const [checkIn, setCheckIn] = useState(todayISO);
   const [checkOut, setCheckOut] = useState(tomorrowISO);
   const [roomTypes, setRoomTypes] = useState<string[]>([]);
   const [roomType, setRoomType] = useState("");
-  const [adults, setAdults] = useState("1");
   const [kids, setKids] = useState("0");
   const [rooms, setRooms] = useState("1");
   const [payment, setPayment] = useState("");
@@ -70,27 +81,57 @@ export default function NewBookingPage() {
     }).catch(() => {});
   }, []);
 
+  function updateGuest(i: number, key: keyof GuestInfo, value: string) {
+    setGuests((prev) => prev.map((g, idx) => (idx === i ? { ...g, [key]: value } : g)));
+    setFieldErrors((p) => ({ ...p, [`g${i}_${key}`]: "" }));
+  }
+  function setGuestCount(n: number) {
+    const count = Math.max(1, Math.min(MAX_GUESTS, n || 1));
+    setGuests((prev) => {
+      const next = [...prev];
+      while (next.length < count) next.push(blankGuest());
+      while (next.length > count) next.pop();
+      return next;
+    });
+  }
+  function addGuest() { setGuests((p) => (p.length < MAX_GUESTS ? [...p, blankGuest()] : p)); }
+  function removeGuest(i: number) { setGuests((p) => (p.length > 1 ? p.filter((_, idx) => idx !== i) : p)); }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const errs: Record<string, string> = {};
-    if (!firstName.trim()) errs.firstName = "First name is required";
-    if (!lastName.trim()) errs.lastName = "Last name is required";
+    guests.forEach((g, i) => {
+      if (!g.firstName.trim()) errs[`g${i}_firstName`] = "First name is required";
+      if (!g.lastName.trim()) errs[`g${i}_lastName`] = "Last name is required";
+    });
     if (!checkIn) errs.checkIn = "Check-in date is required";
     if (!checkOut) errs.checkOut = "Check-out date is required";
     if (!roomType) errs.roomType = "Room type is required";
-    if (Object.keys(errs).length > 0) { setFieldErrors(errs); return; }
+    if (Object.keys(errs).length > 0) {
+      setFieldErrors(errs);
+      setError("Please complete the required guest and booking details.");
+      return;
+    }
     setFieldErrors({});
     setSubmitting(true);
     setError(null);
     try {
+      const [primary, ...extra] = guests;
       const res = await fetch("/api/bookings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          firstName, lastName,
+          firstName: primary.firstName, lastName: primary.lastName,
+          gender: primary.gender, age: primary.age,
+          idType: primary.idType, idNumber: primary.idNumber,
+          phone: primary.phone, email: primary.email, country: primary.nationality,
           checkIn, checkOut,
-          roomType, adults, kids, rooms,
+          roomType, adults: String(guests.length), kids, rooms,
           payment, specialRequest,
+          guests: extra.map((g) => ({
+            firstName: g.firstName, lastName: g.lastName, gender: g.gender, age: g.age,
+            idType: g.idType, idNumber: g.idNumber, phone: g.phone, email: g.email, nationality: g.nationality,
+          })),
         }),
       });
       const data = await res.json();
@@ -143,20 +184,102 @@ export default function NewBookingPage() {
 
         <form onSubmit={handleSubmit} className="space-y-5">
 
-          {/* ── Name ── */}
+          {/* ── Guests ── */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className={L}>First Name <span className="text-rose-500">*</span></label>
-                <input className={fieldErrors.firstName ? FE : F} placeholder="First Name" value={firstName} onChange={(e) => { setFirstName(e.target.value); setFieldErrors((p) => ({ ...p, firstName: "" })); }} />
-                {fieldErrors.firstName && <p className="text-xs text-rose-500 mt-1">{fieldErrors.firstName}</p>}
-              </div>
-              <div>
-                <label className={L}>Last Name <span className="text-rose-500">*</span></label>
-                <input className={fieldErrors.lastName ? FE : F} placeholder="Last Name" value={lastName} onChange={(e) => { setLastName(e.target.value); setFieldErrors((p) => ({ ...p, lastName: "" })); }} />
-                {fieldErrors.lastName && <p className="text-xs text-rose-500 mt-1">{fieldErrors.lastName}</p>}
-              </div>
+            <SectionHeader
+              icon={Users}
+              title="Guests"
+              right={
+                <div className="flex items-center gap-2">
+                  <label className="text-xs font-semibold text-slate-500">Number of guests</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={MAX_GUESTS}
+                    value={guests.length}
+                    onChange={(e) => setGuestCount(parseInt(e.target.value))}
+                    className="w-20 bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-[#0f1f38]/15 focus:border-[#0f1f38] transition"
+                  />
+                </div>
+              }
+            />
+
+            <div className="space-y-5">
+              {guests.map((g, i) => (
+                <div key={i} className="rounded-xl border border-slate-200 p-5 bg-slate-50/40">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#0f1f38] text-white text-xs font-bold">{i + 1}</span>
+                      <span className="text-sm font-bold text-[#0f1f38]">
+                        {i === 0 ? "Primary Guest" : `Guest ${i + 1}`}
+                      </span>
+                    </div>
+                    {guests.length > 1 && (
+                      <button type="button" onClick={() => removeGuest(i)} className="text-slate-400 hover:text-rose-500 transition-colors" title="Remove guest">
+                        <Trash2 size={15} />
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <label className={L}>First Name <span className="text-rose-500">*</span></label>
+                      <input className={fieldErrors[`g${i}_firstName`] ? FE : F} placeholder="First Name" value={g.firstName} onChange={(e) => updateGuest(i, "firstName", e.target.value)} />
+                      {fieldErrors[`g${i}_firstName`] && <p className="text-xs text-rose-500 mt-1">{fieldErrors[`g${i}_firstName`]}</p>}
+                    </div>
+                    <div>
+                      <label className={L}>Last Name <span className="text-rose-500">*</span></label>
+                      <input className={fieldErrors[`g${i}_lastName`] ? FE : F} placeholder="Last Name" value={g.lastName} onChange={(e) => updateGuest(i, "lastName", e.target.value)} />
+                      {fieldErrors[`g${i}_lastName`] && <p className="text-xs text-rose-500 mt-1">{fieldErrors[`g${i}_lastName`]}</p>}
+                    </div>
+                    <div>
+                      <label className={L}>Gender</label>
+                      <Sel>
+                        <select className={S} value={g.gender} onChange={(e) => updateGuest(i, "gender", e.target.value)}>
+                          <option value="">-- Select --</option>
+                          {GENDERS.map((x) => <option key={x}>{x}</option>)}
+                        </select>
+                      </Sel>
+                    </div>
+                    <div>
+                      <label className={L}>Age</label>
+                      <input className={F} type="number" min={0} placeholder="Age" value={g.age} onChange={(e) => updateGuest(i, "age", e.target.value)} />
+                    </div>
+                    <div>
+                      <label className={L}>ID Type</label>
+                      <Sel>
+                        <select className={S} value={g.idType} onChange={(e) => updateGuest(i, "idType", e.target.value)}>
+                          <option value="">-- Select --</option>
+                          {ID_TYPES.map((x) => <option key={x}>{x}</option>)}
+                        </select>
+                      </Sel>
+                    </div>
+                    <div>
+                      <label className={L}>ID Number</label>
+                      <input className={F} placeholder="ID / Passport No." value={g.idNumber} onChange={(e) => updateGuest(i, "idNumber", e.target.value)} />
+                    </div>
+                    <div>
+                      <label className={L}>Phone</label>
+                      <input className={F} placeholder="Phone" value={g.phone} onChange={(e) => updateGuest(i, "phone", e.target.value)} />
+                    </div>
+                    <div>
+                      <label className={L}>Email</label>
+                      <input className={F} type="email" placeholder="Email" value={g.email} onChange={(e) => updateGuest(i, "email", e.target.value)} />
+                    </div>
+                    <div>
+                      <label className={L}>Nationality</label>
+                      <input className={F} placeholder="Nationality" value={g.nationality} onChange={(e) => updateGuest(i, "nationality", e.target.value)} />
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
+
+            {guests.length < MAX_GUESTS && (
+              <button type="button" onClick={addGuest} className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-dashed border-slate-300 text-sm font-semibold text-slate-500 hover:border-[#c9a84c] hover:text-[#0f1f38] transition-colors">
+                <UserPlus size={15} /> Add Guest
+              </button>
+            )}
           </div>
 
           {/* ── Booking Details ── */}
@@ -179,19 +302,15 @@ export default function NewBookingPage() {
               </div>
             </div>
             <div className="grid grid-cols-4 gap-4">
-              <div>
+              <div className="col-span-2">
                 <label className={L}>Room Type <span className="text-rose-500">*</span></label>
                 <Sel>
-                  <select className={fieldErrors.roomType ? SE : S} value={roomType} onChange={(e) => { setRoomType(e.target.value); setFieldErrors((p) => ({ ...p, roomType: "" })); }}>
+                  <select className={S + (fieldErrors.roomType ? " border-rose-400" : "")} value={roomType} onChange={(e) => { setRoomType(e.target.value); setFieldErrors((p) => ({ ...p, roomType: "" })); }}>
                     <option value="">-- Select --</option>
                     {roomTypes.map((t) => <option key={t}>{t}</option>)}
                   </select>
                 </Sel>
                 {fieldErrors.roomType && <p className="text-xs text-rose-500 mt-1">{fieldErrors.roomType}</p>}
-              </div>
-              <div>
-                <label className={L}>Adults</label>
-                <input className={F} value={adults} onChange={(e) => setAdults(e.target.value)} type="number" min={1} placeholder="1" />
               </div>
               <div>
                 <label className={L}>Kids</label>

@@ -27,15 +27,18 @@ export async function DELETE(
 
     const pool = await getDB();
 
-    await pool.request()
+    const result = await pool.request()
       .input("id",         sql.Int, pId)
       .input("booking_id", sql.Int, bookingId)
       .input("hotel_id",   sql.Int, session.hotelId)
       .query(`
         UPDATE reservation_payments
         SET is_deleted = 1, updated_at = GETDATE()
-        WHERE id = @id AND booking_id = @booking_id AND hotel_id = @hotel_id
+        WHERE id = @id AND booking_id = @booking_id AND hotel_id = @hotel_id AND is_deleted = 0
       `);
+
+    if (result.rowsAffected[0] === 0)
+      return NextResponse.json({ error: "Payment not found" }, { status: 404 });
 
     return NextResponse.json({ success: true });
   } catch (err) {

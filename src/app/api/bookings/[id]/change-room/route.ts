@@ -86,7 +86,9 @@ export async function POST(
     const bookingId = parseInt(id);
     if (isNaN(bookingId)) return NextResponse.json({ error: "Invalid id" }, { status: 400 });
 
-    const { roomId, notes } = await req.json();
+    let body: { roomId?: number; notes?: string };
+    try { body = await req.json(); } catch { return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 }); }
+    const { roomId, notes } = body;
     if (!roomId) return NextResponse.json({ error: "roomId is required" }, { status: 400 });
 
     const pool = await getDB();
