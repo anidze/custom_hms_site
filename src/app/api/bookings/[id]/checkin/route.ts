@@ -234,16 +234,15 @@ export async function POST(
             .input('by', sql.Int, session.userId)
             .query(`INSERT INTO folio_lines(hotel_id,booking_id,line_type,description,quantity,unit_price,total_amount,is_credit,created_by)
               VALUES(@hotel_id,@booking_id,N'Deposit',CONCAT(N'Deposit – ',@method),1,@deposit,@deposit,1,@by)`);
-          try {
-            await pool.request()
-              .input('booking_id', sql.Int, bookingId).input('amount', sql.Decimal(10,2), body.depositAmount)
-              .input('method', sql.NVarChar(50), body.depositMethod ?? 'Cash')
-              .query(`INSERT INTO payments(booking_id,amount,payment_method,paid_at,notes)
-                VALUES(@booking_id,@amount,@method,GETDATE(),N'Deposit at Check-In')`);
-          } catch {
-            await pool.request().input('booking_id', sql.Int, bookingId).input('amount', sql.Decimal(10,2), body.depositAmount)
-              .query('INSERT INTO payments(booking_id,amount) VALUES(@booking_id,@amount)');
-          }
+          await pool.request()
+            .input('booking_id', sql.Int, bookingId).input('amount', sql.Decimal(10,2), body.depositAmount)
+            .input('method', sql.NVarChar(50), body.depositMethod ?? 'Cash')
+            .input('by', sql.Int, session.userId)
+            .query(`INSERT INTO payments(booking_id,method_id,amount,payment_method,paid_at,notes,created_by)
+              VALUES(@booking_id,
+                     COALESCE((SELECT TOP 1 id FROM payment_method WHERE code = UPPER(@method) OR name_eng = @method),
+                              (SELECT TOP 1 id FROM payment_method WHERE code = 'CASH'), 1),
+                     @amount,@method,GETDATE(),N'Deposit at Check-In',@by)`);
         }
       }
     } catch (fe) { console.warn('Folio skipped (run enterprise_v3_migration.sql):', fe); }
