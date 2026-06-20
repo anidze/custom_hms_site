@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
       .input("age", sql.Int, age ? parseInt(age) : null)
       .input("id_type", sql.NVarChar(50), idType || null)
       .input("id_number", sql.NVarChar(50), idNumber || null)
-      .input("phone", sql.NVarChar(50), phone ? `${countryCode ?? ""}${phone.replace(new RegExp("^\\" + (countryCode ?? "")), "")}` : null)
+      .input("phone", sql.NVarChar(50), phone ? (countryCode ? `${countryCode}${phone.replace(new RegExp("^\\" + countryCode), "")}` : phone) : null)
       .input("email", sql.NVarChar(200), email || null)
       .input("city", sql.NVarChar(100), city || null)
       .input("state", sql.NVarChar(100), state || null)
