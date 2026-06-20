@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronDown, ChevronLeft, ChevronRight, Calendar, Users, UserPlus, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Calendar, Users, UserPlus, Trash2, BedDouble } from "lucide-react";
+
+interface AvailableRoom { id: number; room_number: string; floor: number | null; room_type_name: string; price_per_night: number; }
 
 function iso(y: number, m: number, d: number) {
   return `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
@@ -122,6 +124,14 @@ export default function NewBookingPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  // Room-assignment modal state
+  const [savedBookingId, setSavedBookingId] = useState<number | null>(null);
+  const [showRoomModal, setShowRoomModal] = useState(false);
+  const [availableRooms, setAvailableRooms] = useState<AvailableRoom[]>([]);
+  const [loadingRooms, setLoadingRooms] = useState(false);
+  const [assigningRoomId, setAssigningRoomId] = useState<number | null>(null);
+  // Guards against React-strict-mode double invocation in dev.
+  const submittedRef = useRef(false);
 
   useEffect(() => {
     fetch("/api/rooms").then((r) => r.json()).then((data: { room_type_name: string }[]) => {
@@ -151,6 +161,7 @@ export default function NewBookingPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (submittedRef.current) return;
     const errs: Record<string, string> = {};
     guests.forEach((g, i) => {
       if (!g.firstName.trim()) errs[`g${i}_firstName`] = "Required";
@@ -165,6 +176,7 @@ export default function NewBookingPage() {
       return;
     }
     setFieldErrors({});
+    submittedRef.current = true;
     setSubmitting(true);
     setError(null);
     try {
@@ -180,13 +192,70 @@ export default function NewBookingPage() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.error ?? "Unknown error"); return; }
-      // Reservation created — continue to the detailed guest/booking step.
-      router.push(`/reservations/${data.bookingId}/edit`);
-    } catch { setError("Network error"); } finally { setSubmitting(false); }
+      if (!res.ok) {
+        setError(data.error ?? "Unknown error");
+        submittedRef.current = false;
+        return;
+      }
+      setSavedBookingId(data.bookingId);
+      // Open the room-assignment popup and load available rooms once.
+      setShowRoomModal(true);
+      setLoadingRooms(true);
+      try {
+        // No roomType filter so the modal shows every available category;
+        // the preferred type (the one selected on the form) is shown first.
+        const roomsRes = await fetch(
+          `/api/rooms/available?checkIn=${checkIn}&checkOut=${checkOut}`
+        );
+        const roomsData = await roomsRes.json();
+        setAvailableRooms(Array.isArray(roomsData) ? roomsData : []);
+      } catch {
+        setAvailableRooms([]);
+      } finally {
+        setLoadingRooms(false);
+      }
+    } catch {
+      setError("Network error");
+      submittedRef.current = false;
+    } finally {
+      setSubmitting(false);
+    }
   }
 
+  async function handleAssignRoom(roomId: number) {
+    if (!savedBookingId) return;
+    setAssigningRoomId(roomId);
+    try {
+      await fetch(`/api/bookings/${savedBookingId}/assign-room`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roomId }),
+      });
+    } catch {
+      /* fall through — still navigate to the detail step */
+    } finally {
+      setAssigningRoomId(null);
+      setShowRoomModal(false);
+      router.push(`/reservations/${savedBookingId}/edit`);
+    }
+  }
+
+  function skipRoomAssignment() {
+    setShowRoomModal(false);
+    if (savedBookingId) router.push(`/reservations/${savedBookingId}/edit`);
+  }
+
+  // Group available rooms by category (room type) for the assignment modal.
+  const groupedRooms = availableRooms.reduce<Record<string, AvailableRoom[]>>((acc, r) => {
+    const key = r.room_type_name || "Other";
+    (acc[key] = acc[key] || []).push(r);
+    return acc;
+  }, {});
+  const categoryOrder = Object.keys(groupedRooms).sort((a, b) => (a === roomType ? -1 : b === roomType ? 1 : a.localeCompare(b)));
+  const bookingNo = savedBookingId ? `AL${String(savedBookingId).padStart(4, "0")}` : null;
+
   return (
+    <>
     <div className="max-w-3xl mx-auto pb-10">
       {/* Breadcrumb */}
       <div className="mb-6 flex items-center gap-2 text-sm text-slate-400">
@@ -288,5 +357,78 @@ export default function NewBookingPage() {
         </div>
       </form>
     </div>
+
+    {/* Room-assignment popup — opens after a successful Create */}
+    {showRoomModal && (
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-2xl w-full max-w-xl shadow-2xl flex flex-col max-h-[85vh] border border-slate-200">
+          <div className="px-6 py-5 border-b border-slate-100 bg-linear-to-r from-[#0f1f38] to-[#1e3a5f] rounded-t-2xl">
+            <div className="flex items-center gap-3 mb-1">
+              <BedDouble size={18} className="text-[#c9a84c]" />
+              <h2 className="text-base font-bold text-white">Assign a Room</h2>
+            </div>
+            {bookingNo && <p className="text-xs text-white/60 font-mono">Confirmation #{bookingNo}</p>}
+            <p className="text-xs text-white/70 mt-1">{fmtLong(checkIn)} → {fmtLong(checkOut)} &middot; {nights} {nights === 1 ? "night" : "nights"}</p>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-5">
+            {loadingRooms ? (
+              <div className="text-center py-10">
+                <div className="w-6 h-6 border-2 border-[#0f1f38] border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                <p className="text-sm text-slate-400">Loading available rooms…</p>
+              </div>
+            ) : availableRooms.length === 0 ? (
+              <div className="text-center py-10">
+                <BedDouble size={28} className="text-slate-200 mx-auto mb-2" />
+                <p className="text-sm text-slate-500 font-medium">No available rooms for these dates</p>
+                <p className="text-xs text-slate-400 mt-1">You can assign a room later from the reservation page.</p>
+              </div>
+            ) : (
+              <div className="space-y-5">
+                {categoryOrder.map((cat) => (
+                  <div key={cat}>
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="text-xs font-bold text-[#0f1f38] uppercase tracking-wider">{cat}</h3>
+                      <span className="text-[10px] text-slate-400 font-semibold">{groupedRooms[cat].length} available</span>
+                    </div>
+                    <div className="space-y-2">
+                      {groupedRooms[cat].map((room) => (
+                        <div key={room.id} className="flex items-center justify-between p-3 rounded-xl border border-slate-200 hover:border-[#c9a84c] hover:bg-amber-50/30 transition-colors">
+                          <div>
+                            <p className="font-bold text-slate-800 text-sm">Room {room.room_number}</p>
+                            <p className="text-xs text-slate-500 mt-0.5">
+                              Floor {room.floor ?? "—"} &middot; &#8382;{Number(room.price_per_night).toFixed(2)}/night
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleAssignRoom(room.id)}
+                            disabled={assigningRoomId !== null}
+                            className="px-4 py-1.5 rounded-lg bg-[#0f1f38] text-white text-xs font-semibold hover:bg-[#c9a84c] hover:text-[#0f1f38] transition-colors disabled:opacity-50"
+                          >
+                            {assigningRoomId === room.id ? "…" : "Assign"}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="p-5 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={skipRoomAssignment}
+              className="w-full py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-500 hover:bg-slate-50 transition-colors"
+            >
+              Skip — assign room later
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
