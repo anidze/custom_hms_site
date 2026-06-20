@@ -153,7 +153,7 @@ export async function PUT(
         .input("age", sql.Int, age ? parseInt(age) : null)
         .input("id_type", sql.NVarChar(sql.MAX), idType || null)
         .input("id_number", sql.NVarChar(sql.MAX), idNumber || null)
-        .input("phone", sql.NVarChar(sql.MAX), phone ? `${countryCode ?? ""}${phone.replace(new RegExp("^\\" + (countryCode ?? "")), "")}` : null)
+        .input("phone", sql.NVarChar(sql.MAX), phone ? (countryCode ? `${countryCode}${phone.replace(new RegExp("^\\" + countryCode), "")}` : phone) : null)
         .input("email", sql.NVarChar(sql.MAX), email || null)
         .input("city", sql.NVarChar(sql.MAX), city || null)
         .input("state", sql.NVarChar(sql.MAX), state || null)
