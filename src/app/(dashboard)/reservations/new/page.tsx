@@ -232,17 +232,17 @@ export default function NewBookingPage() {
         body: JSON.stringify({ roomId }),
       });
     } catch {
-      /* fall through — still navigate to the detail step */
+      /* fall through — still navigate back to the reservations list */
     } finally {
       setAssigningRoomId(null);
       setShowRoomModal(false);
-      router.push(`/reservations/${savedBookingId}/edit`);
+      router.push("/reservations");
     }
   }
 
   function skipRoomAssignment() {
     setShowRoomModal(false);
-    if (savedBookingId) router.push(`/reservations/${savedBookingId}/edit`);
+    router.push("/reservations");
   }
 
   // Group available rooms by category (room type) for the assignment modal.
@@ -265,7 +265,7 @@ export default function NewBookingPage() {
       </div>
 
       <p className="text-sm text-slate-500 mb-5">
-        Start the reservation with each guest&apos;s name and the stay dates. You&apos;ll add full personal details on the next step.
+        Save the reservation with each guest&apos;s name and the stay dates. Full personal details for every guest can be added later from the reservation&apos;s edit page.
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-5">
@@ -352,7 +352,7 @@ export default function NewBookingPage() {
             Cancel
           </button>
           <button type="submit" disabled={submitting} className="px-8 py-2.5 rounded-xl bg-[#0f1f38] text-white text-sm font-semibold hover:bg-[#1a3152] transition-colors disabled:opacity-60 disabled:cursor-not-allowed shadow-sm">
-            {submitting ? "Creating…" : "Create & Continue"}
+            {submitting ? "Saving…" : "Save"}
           </button>
         </div>
       </form>
