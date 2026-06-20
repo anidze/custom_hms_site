@@ -77,6 +77,7 @@ export default function TopHeader({ email, roleId }: TopHeaderProps) {
       {/* Right: avatar with dropdown */}
       <div className="relative" ref={dropdownRef}>
         <button
+          type="button"
           onClick={() => setDropdownOpen((v) => !v)}
           className="w-8 h-8 rounded-full bg-[#0f1f38] flex items-center justify-center text-white text-xs font-semibold shrink-0 hover:opacity-80 transition-opacity"
         >
@@ -91,6 +92,7 @@ export default function TopHeader({ email, roleId }: TopHeaderProps) {
               {roleLabel && <p className="text-[11px] text-[#c9a84c] font-medium mt-0.5">{roleLabel}</p>}
             </div>
             <button
+              type="button"
               onClick={handleLogout}
               className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-zinc-500 hover:text-red-500 hover:bg-red-50 transition-colors"
             >
