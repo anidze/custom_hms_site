@@ -3,9 +3,10 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { Country, City } from "country-state-city";
 import { useRouter, useParams } from "next/navigation";
-import { ChevronDown, ChevronUp, BedDouble, CreditCard, MessageSquare, Calendar, Users, Plus, Trash2, Wallet, StickyNote } from "lucide-react";
+import { ChevronDown, ChevronUp, BedDouble, CreditCard, MessageSquare, Calendar, Users, Plus, Trash2, Wallet, StickyNote, ShieldCheck } from "lucide-react";
 import PaymentPanel, { type PaymentData } from "@/components/payments/PaymentPanel";
 import NotesPanel,   { type Note        } from "@/components/payments/NotesPanel";
+import CardHoldsPanel from "@/components/payments/CardHoldsPanel";
 
 function todayISO() { return new Date().toISOString().split("T")[0]; }
 function calcNights(from: string, to: string) {
@@ -17,7 +18,7 @@ interface AvailableRoom { id: number; room_number: string; floor: number | null;
 interface RoomHistoryItem { id: number; previousRoomNumber: string | null; newRoomNumber: string; changedAt: string; notes: string | null; }
 
 type DocType   = "" | "Passport" | "ID" | "Driver Licence";
-type FolioTab  = "booking" | "payments" | "notes";
+type FolioTab  = "booking" | "payments" | "holds" | "notes";
 
 interface GuestRow {
   firstName: string;
@@ -546,6 +547,7 @@ export default function EditBookingPage() {
               {([
                 { key: "booking",  label: "Booking",  icon: <CreditCard size={13} /> },
                 { key: "payments", label: "Payments", icon: <Wallet size={13} /> },
+                { key: "holds",    label: "Holds",    icon: <ShieldCheck size={13} /> },
                 { key: "notes",    label: "Notes",    icon: <StickyNote size={13} /> },
               ] as { key: FolioTab; label: string; icon: React.ReactNode }[]).map(({ key, label, icon }) => (
                 <button
@@ -601,6 +603,11 @@ export default function EditBookingPage() {
                 ) : (
                   <p className="text-sm text-slate-400 text-center py-10">Could not load payment data.</p>
                 )
+              )}
+
+              {/* ── Holds tab ── */}
+              {folioTab === "holds" && (
+                <CardHoldsPanel bookingId={bookingId} onPaymentsChanged={fetchPayments} />
               )}
 
               {/* ── Notes tab ── */}
