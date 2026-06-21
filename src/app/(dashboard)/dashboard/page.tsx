@@ -5,6 +5,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   Cell, PieChart, Pie,
 } from "recharts";
+import NightAuditWidget from "@/components/NightAuditWidget";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface DashboardStats {
@@ -87,6 +88,9 @@ export default function DashboardPage() {
           </div>
         ))}
       </div>
+
+      {/* Night Audit */}
+      <NightAuditWidget />
 
       {/* Room Status */}
       <div className="bg-white rounded-xl border border-zinc-100 p-5">
