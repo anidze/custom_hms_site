@@ -35,6 +35,14 @@ interface InvoiceData {
   hotelPhone: string;
   hotelEmail: string;
   hotelLogo: string | null;
+  // Issued invoice / VAT
+  invoiceNo: string | null;
+  issuedAt: string | null;
+  vatRate: number;
+  subtotal: number;
+  vatAmount: number;
+  total: number;
+  isIssued: boolean;
 }
 
 function fmt(n: number) {
@@ -50,6 +58,7 @@ export default function InvoicePage() {
   const [data, setData] = useState<InvoiceData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [issuing, setIssuing] = useState(false);
 
   useEffect(() => {
     fetch(`/api/bookings/${bookingId}/invoice`)
@@ -64,6 +73,30 @@ export default function InvoicePage() {
 
   function handlePrint() {
     window.print();
+  }
+
+  async function handleIssue() {
+    if (!data || data.isIssued) return;
+    setIssuing(true);
+    try {
+      const r = await fetch(`/api/bookings/${bookingId}/invoice`, { method: "POST" });
+      const d = await r.json();
+      if (!r.ok) { setError(d.error ?? "Failed to issue invoice"); return; }
+      setData({
+        ...data,
+        isIssued: true,
+        invoiceNo: d.invoiceNo,
+        issuedAt: d.issuedAt ?? new Date().toLocaleString("en-GB"),
+        subtotal: d.subtotal,
+        vatAmount: d.vatAmount,
+        total: d.total,
+        vatRate: d.vatRate,
+      });
+    } catch {
+      setError("Network error issuing invoice");
+    } finally {
+      setIssuing(false);
+    }
   }
 
   if (loading) {
@@ -84,7 +117,7 @@ export default function InvoicePage() {
     );
   }
 
-  const due = data.totalPrice - data.paidAmount;
+  const due = data.total - data.paidAmount;
   const isPaid = due <= 0;
 
   return (
@@ -98,6 +131,15 @@ export default function InvoicePage() {
           <ArrowLeft size={15} /> Back
         </button>
         <div className="flex items-center gap-2">
+          {!data.isIssued && (
+            <button
+              onClick={handleIssue}
+              disabled={issuing}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[#c9a84c] text-[#0f1f38] text-sm font-semibold hover:bg-[#c9a84c]/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {issuing ? "Issuing…" : "Issue Invoice"}
+            </button>
+          )}
           <button
             onClick={handlePrint}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#0f1f38] text-white text-sm font-semibold hover:bg-[#1a3152] transition-colors shadow-sm"
@@ -133,9 +175,16 @@ export default function InvoicePage() {
             </div>
           </div>
           <div className="text-right shrink-0">
-            <p className="text-[#c9a84c] text-xs font-bold uppercase tracking-widest">Invoice</p>
-            <p className="text-white font-mono text-xl font-bold mt-1">#{data.bookingNo}</p>
-            <p className="text-white/50 text-xs mt-1">Issued: {data.createdAt}</p>
+            <p className="text-[#c9a84c] text-xs font-bold uppercase tracking-widest">
+              {data.isIssued ? "Tax Invoice" : "Invoice (draft)"}
+            </p>
+            <p className="text-white font-mono text-xl font-bold mt-1">
+              {data.isIssued ? data.invoiceNo : `#${data.bookingNo}`}
+            </p>
+            <p className="text-white/50 text-xs mt-1">
+              {data.isIssued ? `Issued: ${data.issuedAt}` : `Created: ${data.createdAt}`}
+            </p>
+            <p className="text-white/40 text-[10px] mt-0.5 font-mono">Booking #{data.bookingNo}</p>
             <div className="mt-2">
               <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${isPaid ? "bg-emerald-500/20 text-emerald-300" : "bg-amber-500/20 text-amber-300"}`}>
                 {isPaid ? "PAID" : "OUTSTANDING"}
@@ -225,11 +274,19 @@ export default function InvoicePage() {
             </div>
           </div>
 
-          {/* Totals */}
-          <div className="mt-5 ml-auto w-64 space-y-2.5">
+          {/* Totals (VAT-inclusive breakdown) */}
+          <div className="mt-5 ml-auto w-72 space-y-2.5">
             <div className="flex justify-between text-sm">
-              <span className="text-slate-400">Subtotal</span>
-              <span className="font-medium text-slate-700">₾{fmt(data.totalPrice)}</span>
+              <span className="text-slate-400">Subtotal (net)</span>
+              <span className="font-medium text-slate-700">₾{fmt(data.subtotal)}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-slate-400">VAT ({data.vatRate.toFixed(0)}%)</span>
+              <span className="font-medium text-slate-700">₾{fmt(data.vatAmount)}</span>
+            </div>
+            <div className="border-t border-slate-200 pt-2 flex justify-between text-sm">
+              <span className="font-semibold text-slate-700">Total (incl. VAT)</span>
+              <span className="font-semibold text-slate-800">₾{fmt(data.total)}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-slate-400">Paid</span>
