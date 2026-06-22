@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { verifySession } from "@/lib/session";
 import { getDB } from "@/lib/db";
+import { getGateway } from "@/lib/gateway";
 import sql from "mssql";
 
 async function getSession() {
@@ -106,6 +107,7 @@ export async function POST(
     let body: {
       amount?: number; currency?: string; card_last4?: string;
       auth_code?: string; notes?: string; expires_at?: string;
+      useGateway?: boolean;
     };
     try { body = await req.json(); } catch { return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 }); }
 
@@ -123,13 +125,35 @@ export async function POST(
     if (own.recordset.length === 0)
       return NextResponse.json({ error: "Booking not found" }, { status: 404 });
 
+    // Optional gateway call. Default behavior (no flag) stores the manual
+    // hold as-is, matching how the desk has been recording terminal pre-auths
+    // until now. With useGateway=true we ask the configured provider for an
+    // authorization and store the returned ref + approval code on the row.
+    let providerRef: string | null = null;
+    let resolvedAuthCode = body.auth_code ?? null;
+    let resolvedCardLast4 = body.card_last4 ?? null;
+    if (body.useGateway) {
+      const gw = getGateway();
+      const res = await gw.authorize({
+        amount,
+        currency:    body.currency ?? "GEL",
+        description: `Hold for booking #${bookingId}`,
+        card:        { last4: body.card_last4 },
+      });
+      if (!res.success)
+        return NextResponse.json({ error: res.error ?? "Gateway declined" }, { status: 502 });
+      providerRef        = res.providerRef ?? null;
+      resolvedAuthCode   = res.approvalCode ?? resolvedAuthCode;
+      resolvedCardLast4  = res.cardLast4   ?? resolvedCardLast4;
+    }
+
     const r = await pool.request()
       .input("hotel_id",   sql.Int,           session.hotelId)
       .input("booking_id", sql.Int,           bookingId)
       .input("amount",     sql.Decimal(10,2),  amount)
       .input("currency",   sql.NVarChar(3),    body.currency ?? "GEL")
-      .input("card_last4", sql.NVarChar(4),    body.card_last4 ?? null)
-      .input("auth_code",  sql.NVarChar(50),   body.auth_code  ?? null)
+      .input("card_last4", sql.NVarChar(4),    resolvedCardLast4)
+      .input("auth_code",  sql.NVarChar(50),   resolvedAuthCode ?? providerRef)
       .input("notes",      sql.NVarChar(500),  body.notes      ?? null)
       .input("expires_at", sql.DateTime2,      body.expires_at ? new Date(body.expires_at) : null)
       .input("created_by", sql.Int,            session.userId)
@@ -141,7 +165,7 @@ export async function POST(
           (@hotel_id, @booking_id, @amount, @currency, @card_last4, @auth_code, @notes, @expires_at, @created_by, N'AUTHORIZED')
       `);
 
-    return NextResponse.json({ success: true, id: r.recordset[0].id }, { status: 201 });
+    return NextResponse.json({ success: true, id: r.recordset[0].id, providerRef }, { status: 201 });
   } catch (err) {
     console.error("Holds POST error:", err);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
