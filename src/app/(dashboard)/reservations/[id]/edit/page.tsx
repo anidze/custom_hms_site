@@ -599,7 +599,7 @@ export default function EditBookingPage() {
                     <div className="w-5 h-5 border-2 border-[#0f1f38] border-t-transparent rounded-full animate-spin" />
                   </div>
                 ) : paymentData ? (
-                  <PaymentPanel bookingId={bookingId} data={paymentData} canDelete onRefresh={fetchPayments} />
+                  <PaymentPanel bookingId={bookingId} data={paymentData} canDelete canRefund onRefresh={fetchPayments} />
                 ) : (
                   <p className="text-sm text-slate-400 text-center py-10">Could not load payment data.</p>
                 )
