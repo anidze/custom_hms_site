@@ -3,15 +3,17 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 import { Calendar, LogOut } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/context";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 
-const PAGE_TITLES: Record<string, string> = {
-  "/dashboard":    "Dashboard",
-  "/frontdesk":    "Frontdesk",
-  "/reservations": "Reservations",
-  "/rooms":        "Rooms",
-  "/housekeeping": "Housekeeping",
-  "/invoice":      "Invoice",
-  "/reports":      "Reports",
+const PAGE_TITLE_KEYS: Record<string, string> = {
+  "/dashboard":    "nav.dashboard",
+  "/frontdesk":    "nav.frontdesk",
+  "/reservations": "nav.reservations",
+  "/rooms":        "nav.rooms",
+  "/housekeeping": "nav.housekeeping",
+  "/invoice":      "nav.invoice",
+  "/reports":      "nav.reports",
 };
 
 const ROLE_LABELS: Record<number, string> = {
@@ -30,13 +32,16 @@ interface TopHeaderProps {
 export default function TopHeader({ email, roleId }: TopHeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const title = PAGE_TITLES[pathname] ?? "HMS";
+  const { t, locale } = useTranslation();
+  const tKey = PAGE_TITLE_KEYS[pathname];
+  const title = tKey ? t(tKey) : "HMS";
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const today = new Date();
-  const displayDate = today.toLocaleDateString("en-GB", {
+  const localeMap: Record<string, string> = { ka: "ka-GE", en: "en-GB", ru: "ru-RU" };
+  const displayDate = today.toLocaleDateString(localeMap[locale] ?? "en-GB", {
     day: "2-digit",
     month: "short",
     year: "numeric",
@@ -71,10 +76,14 @@ export default function TopHeader({ email, roleId }: TopHeaderProps) {
       {/* Center: date */}
       <div className="flex items-center gap-1.5 text-xs text-zinc-400">
         <Calendar size={13} />
-        <span>{displayDate}</span>
+        {/* Date format depends on locale → Node and browser ICU may differ slightly;
+            suppress hydration warning since this is informational only. */}
+        <span suppressHydrationWarning>{displayDate}</span>
       </div>
 
-      {/* Right: avatar with dropdown */}
+      {/* Right: language + avatar with dropdown */}
+      <div className="flex items-center gap-1">
+      <LanguageSwitcher />
       <div className="relative" ref={dropdownRef}>
         <button
           type="button"
@@ -97,10 +106,11 @@ export default function TopHeader({ email, roleId }: TopHeaderProps) {
               className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-zinc-500 hover:text-red-500 hover:bg-red-50 transition-colors"
             >
               <LogOut size={14} />
-              <span>Logout</span>
+              <span>{t("common.logout")}</span>
             </button>
           </div>
         )}
+      </div>
       </div>
     </header>
   );

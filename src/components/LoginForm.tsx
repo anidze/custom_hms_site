@@ -3,6 +3,8 @@
 import { useState, type FormEvent } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { useTranslation } from "@/lib/i18n/context";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 interface LoginFormProps {
   hotelName?: string;
@@ -14,6 +16,7 @@ export default function LoginForm({
   logoSrc = "/images/CHMS.png",
 }: LoginFormProps) {
   const router = useRouter();
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -31,7 +34,7 @@ export default function LoginForm({
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error ?? "Login failed");
+        setError(data.error ?? t("auth.invalidCredentials"));
         return;
       }
       router.push("/dashboard");
@@ -44,6 +47,11 @@ export default function LoginForm({
 
   return (
     <div className="w-full max-w-sm">
+      {/* Language switcher (top-right corner) */}
+      <div className="flex justify-end mb-2">
+        <LanguageSwitcher />
+      </div>
+
       {/* Logo */}
       <div className="mb-8 flex flex-col items-center gap-3">
         <div className="relative w-40 h-40 rounded-xl overflow-hidden ring-1 ring-zinc-200">
@@ -62,7 +70,7 @@ export default function LoginForm({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
             <label htmlFor="email" className="block text-xs font-medium text-zinc-600 uppercase tracking-wide">
-              Email
+              {t("auth.email")}
             </label>
             <input
               id="email" type="email" required
@@ -74,7 +82,7 @@ export default function LoginForm({
 
           <div className="space-y-1.5">
             <label htmlFor="password" className="block text-xs font-medium text-zinc-600 uppercase tracking-wide">
-              Password
+              {t("auth.password")}
             </label>
             <input
               id="password" type="password" required
@@ -88,7 +96,7 @@ export default function LoginForm({
             type="submit" disabled={isLoading}
             className="mt-2 w-full rounded-lg bg-[#0f1f38] py-2.5 text-sm font-semibold text-white  hover:bg-[#162d4e]  disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isLoading ? "Checking..." : "Sign In"}
+            {isLoading ? t("common.loading") : t("auth.signIn")}
           </button>
         </form>
       </div>
